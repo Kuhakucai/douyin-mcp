@@ -1,0 +1,29 @@
+[
+  {
+    "title": "示例作品 A：本地 Agent 数据同步",
+    "publish_time": "2026年07月10日 18:30",
+    "duration": "01:05",
+    "status": "已发布",
+    "cover_url": "https://example.test/covers/a.jpg?signature=private#preview",
+    "metrics": {
+      "播放": "9.6万",
+      "点赞": "1,291",
+      "评论": "175",
+      "分享": "160"
+    }
+  },
+  {
+    "title": "示例作品 B：浏览器登录态",
+    "publish_time": "2026年07月09日 09:15",
+    "duration": "01:02:03",
+    "status": "私密",
+    "cover_url": "javascript:alert(1)",
+    "metrics": {
+      "播放": "1.2亿",
+      "点赞": "-",
+      "评论": "43",
+      "分享": "138",
+      "收藏": "2.5万"
+    }
+  }
+]

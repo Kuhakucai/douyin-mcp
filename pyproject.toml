@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "douyin-creator-mcp"
+version = "0.1.0"
+description = "Local Douyin creator MCP server using a persistent browser login session."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "cryptography>=42",
+  "httpx>=0.27",
+  "fastmcp>=2.0",
+  "fastapi>=0.110",
+  "uvicorn>=0.27",
+  "playwright>=1.45"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8"
+]
+
+[project.scripts]
+douyin-mcp = "douyin_creator_mcp.cli:main"
+douyin-creator-mcp = "douyin_creator_mcp.server:main"
+douyin-creator-callback = "douyin_creator_mcp.callback_app:main"
+douyin-browser-smoke = "douyin_creator_mcp.browser_smoke:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+douyin_creator_mcp = ["storage/*.sql"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
