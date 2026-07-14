@@ -5,7 +5,7 @@
 - 默认 browser-only 容器，无 OpenAPI 密钥可启动；历史 OpenAPI 容器显式保留。
 - MCP 工具固定内部账号 `browser-default`，不暴露账号选择参数。
 - 统一 `douyin-mcp` CLI：init、doctor、login、status、sync、details、videos、performance、export、purge。
-- 跨进程 profile 文件锁和确认式本地数据清除。
+- 跨进程 profile 文件锁、死亡 PID/损坏 stale lock 自动恢复和确认式本地数据清除。
 - 旧 SQLite 自动备份、幂等迁移、busy timeout、同步任务进度和游标。
 - 虚拟滚动列表增量收集、来源指纹、parser version、完整性和字段覆盖率。
 - 详情页指标保守提取、作品身份门禁、5～10 条分批、24 小时缓存和断点游标。

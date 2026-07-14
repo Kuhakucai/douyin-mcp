@@ -9,7 +9,7 @@
 | 分析日期 | 2026-07-13 |
 | 分析范围 | 技术架构、实现可行性、数据模型、任务协议、工程拆解、风险、测试与验收 |
 | 当前技术栈 | Python 3.11+、FastMCP、Playwright、SQLite |
-| 代码验证基线 | `79 passed, 6 subtests passed`；`python -m compileall -q src tests` 通过 |
+| 代码验证基线 | `87 passed, 6 subtests passed`；`python -m compileall -q src tests` 通过 |
 
 ## 2. 执行结论
 

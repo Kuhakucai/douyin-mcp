@@ -207,8 +207,8 @@ DOUYIN_BROWSER_CHANNEL=chrome
 已通过：
 
 - `python -m compileall src`
-- `python -m pytest`：79 passed，另有 6 个参数化子测试通过
-- `python -m unittest discover -s tests`：79 passed
+- `python -m pytest`：87 passed，另有 6 个参数化子测试通过
+- `python -m unittest discover -s tests`：87 passed
 - `python -m douyin_creator_mcp.browser_smoke --help`
 - FastMCP `create_mcp()` 对象创建。
 - FastAPI `create_app()` 路由创建。

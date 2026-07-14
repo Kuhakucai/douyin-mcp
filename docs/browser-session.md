@@ -57,7 +57,7 @@ douyin-browser-smoke details --recent-limit 20 --batch-size 5 --cursor 5
 
 ## 并发和清除
 
-浏览器同步使用 `DATA_DIR/.douyin-mcp.lock` 做跨进程互斥。同一时刻只有一个进程能操作专用 profile。
+浏览器同步使用 `DATA_DIR/.douyin-mcp.lock` 做跨进程互斥。同一时刻只有一个进程能操作专用 profile。取得锁时会跨平台检查原 PID：确认进程已退出则自动回收；锁内容损坏时仅在超过 30 秒安全宽限期后回收；PID 仍存活或无法安全确认时继续返回 `profile_in_use`，不会冒险删除活动锁。
 
 `douyin-mcp purge --yes` 会先关闭当前浏览器，再取得同一把锁，然后清除 SQLite、备份、报告、导出和 profile，避免与同步并发。
 

@@ -22,8 +22,8 @@
 当前验证状态：
 
 - `python -m compileall src` 通过。
-- `python -m pytest` 79 passed，另有 6 个参数化子测试通过。
-- `python -m unittest discover -s tests` 79 passed。
+- `python -m pytest` 87 passed，另有 6 个参数化子测试通过。
+- `python -m unittest discover -s tests` 87 passed。
 - `douyin-browser-smoke` 支持 `login`、`status`、`sync`、`report`、`latest-snapshot`、`videos`。
 - 真实 Chrome 联调已通过：扫码登录、profile 复用、视频管理页同步和报告生成均成功。
 - 真实账号已验证页面声明数、加载数与解析数一致；重复同步后作品与当日指标记录保持幂等，真实数量不进入仓库。
