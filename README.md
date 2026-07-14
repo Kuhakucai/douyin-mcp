@@ -17,7 +17,23 @@
 - 首次成功列表同步建立不可逆的轻量账号指纹，后续发现误切账号时在写入前拒绝同步。
 - 默认 MCP 不依赖抖音 OpenAPI 密钥，也不向 Agent 暴露 `account_id`。
 
-## 安装
+## 一句话安装（Windows）
+
+可直接对支持终端操作的 Agent 说：
+
+```text
+帮我克隆并安装 https://github.com/Kuhakucai/douyin-mcp 项目
+```
+
+Agent 应克隆项目并运行 `easy-install.ps1`，完成项目内虚拟环境、运行依赖、默认配置和本地诊断；首次扫码登录及修改 MCP 客户端配置前必须征得你的确认。详细约束见 [AI 安装指南](docs/ai-install-guide.md)。
+
+已克隆项目时，可直接运行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\easy-install.ps1
+```
+
+## 手动安装
 
 需要 Python 3.11+ 和本机 Google Chrome。
 
