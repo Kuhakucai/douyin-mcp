@@ -3,48 +3,6 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
   applied_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS accounts (
-  id TEXT PRIMARY KEY,
-  open_id TEXT NOT NULL UNIQUE,
-  nickname TEXT,
-  avatar TEXT,
-  authorized_scopes TEXT,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS tokens (
-  account_id TEXT PRIMARY KEY,
-  access_token_encrypted TEXT NOT NULL,
-  refresh_token_encrypted TEXT NOT NULL,
-  expires_at INTEGER NOT NULL,
-  refresh_expires_at INTEGER,
-  updated_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS oauth_states (
-  state TEXT PRIMARY KEY,
-  auth_session_id TEXT NOT NULL UNIQUE,
-  redirect_uri TEXT NOT NULL,
-  scopes TEXT NOT NULL,
-  status TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  consumed_at TEXT,
-  account_id TEXT,
-  error_type TEXT,
-  error_message TEXT
-);
-
-CREATE TABLE IF NOT EXISTS api_capabilities (
-  id TEXT PRIMARY KEY,
-  account_id TEXT,
-  capability_key TEXT NOT NULL,
-  scope TEXT,
-  status TEXT NOT NULL,
-  last_checked_at TEXT NOT NULL,
-  detail_json TEXT
-);
-
 CREATE TABLE IF NOT EXISTS videos (
   id TEXT PRIMARY KEY,
   account_id TEXT NOT NULL,
@@ -149,15 +107,6 @@ CREATE TABLE IF NOT EXISTS reports (
   created_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS audit_logs (
-  id TEXT PRIMARY KEY,
-  account_id TEXT,
-  action TEXT NOT NULL,
-  status TEXT NOT NULL,
-  detail_json TEXT,
-  created_at TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS browser_snapshots (
   id TEXT PRIMARY KEY,
   account_id TEXT NOT NULL,
@@ -177,7 +126,6 @@ CREATE TABLE IF NOT EXISTS browser_account_bindings (
   last_verified_at TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_api_capabilities_account ON api_capabilities(account_id);
 CREATE INDEX IF NOT EXISTS idx_reports_account ON reports(account_id);
 CREATE INDEX IF NOT EXISTS idx_sync_jobs_account ON sync_jobs(account_id);
 CREATE INDEX IF NOT EXISTS idx_browser_snapshots_account ON browser_snapshots(account_id);

@@ -23,8 +23,11 @@ dist/
 build/
 
 # Local browser authentication, diagnostics, and real-account acceptance data
-.auto-flow/*/
-docs/real-account-acceptance-report.md
+.auto-flow/
+docs/
+AGENT_HANDOFF.md
+douyin-creator-mcp-PRD.md
+douyin-creator-mcp.md
 playwright-report/
 test-results/
 *.har

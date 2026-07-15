@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-import base64
 import os
 from dataclasses import dataclass
-from hashlib import sha256
 from pathlib import Path
 from typing import Mapping
-
-from cryptography.fernet import Fernet
 
 from .errors import CONFIGURATION_ERROR, AppError
 
@@ -22,16 +18,6 @@ class Settings:
     mcp_http_api_key: str | None = None
     data_dir: Path = Path("./data")
     log_level: str = "INFO"
-    douyin_client_key: str | None = None
-    douyin_client_secret: str | None = None
-    douyin_redirect_uri: str = "https://your-domain.com/oauth/douyin/callback"
-    douyin_scopes: tuple[str, ...] = ("user_info",)
-    douyin_oauth_mode: str = "local_manual_code"
-    token_encryption_key: str = ""
-    http_timeout_seconds: int = 20
-    sync_page_size: int = 20
-    api_mapping_file: Path = Path("./docs/api-mapping.md")
-    douyin_base_url: str = "https://open.douyin.com"
     douyin_browser_profile_dir: Path = Path("./data/browser-profile")
     douyin_browser_headless: bool = False
     douyin_browser_auto_close: bool = True
@@ -81,12 +67,6 @@ def _get_bool(env: Mapping[str, str], key: str, default: bool) -> bool:
     return raw.lower() in {"1", "true", "yes", "on"}
 
 
-def _get_scopes(env: Mapping[str, str]) -> tuple[str, ...]:
-    raw = _get(env, "DOUYIN_SCOPES", "user_info")
-    scopes = tuple(scope.strip() for scope in raw.replace(";", ",").split(",") if scope.strip())
-    return scopes or ("user_info",)
-
-
 def load_settings(
     env: Mapping[str, str] | None = None,
     dotenv_path: Path | str = ".env",
@@ -101,20 +81,6 @@ def load_settings(
         mcp_http_api_key=_get_optional(merged, "MCP_HTTP_API_KEY"),
         data_dir=Path(_get(merged, "DATA_DIR", "./data")),
         log_level=_get(merged, "LOG_LEVEL", "INFO"),
-        douyin_client_key=_get_optional(merged, "DOUYIN_CLIENT_KEY"),
-        douyin_client_secret=_get_optional(merged, "DOUYIN_CLIENT_SECRET"),
-        douyin_redirect_uri=_get(
-            merged,
-            "DOUYIN_REDIRECT_URI",
-            "https://your-domain.com/oauth/douyin/callback",
-        ),
-        douyin_scopes=_get_scopes(merged),
-        douyin_oauth_mode=_get(merged, "DOUYIN_OAUTH_MODE", "local_manual_code"),
-        token_encryption_key=_get(merged, "TOKEN_ENCRYPTION_KEY", ""),
-        http_timeout_seconds=_get_int(merged, "HTTP_TIMEOUT_SECONDS", 20),
-        sync_page_size=_get_int(merged, "SYNC_PAGE_SIZE", 20),
-        api_mapping_file=Path(_get(merged, "API_MAPPING_FILE", "./docs/api-mapping.md")),
-        douyin_base_url=_get(merged, "DOUYIN_BASE_URL", "https://open.douyin.com"),
         douyin_browser_profile_dir=Path(
             _get(merged, "DOUYIN_BROWSER_PROFILE_DIR", "./data/browser-profile")
         ),
@@ -163,31 +129,6 @@ def ensure_runtime_dirs(settings: Settings) -> None:
     settings.douyin_browser_profile_dir.mkdir(parents=True, exist_ok=True)
 
 
-def validate_for_auth(settings: Settings) -> None:
-    missing = [
-        name
-        for name, value in {
-            "DOUYIN_CLIENT_KEY": settings.douyin_client_key,
-            "DOUYIN_CLIENT_SECRET": settings.douyin_client_secret,
-            "DOUYIN_REDIRECT_URI": settings.douyin_redirect_uri,
-            "TOKEN_ENCRYPTION_KEY": settings.token_encryption_key,
-        }.items()
-        if not value
-    ]
-    if missing:
-        raise AppError(
-            CONFIGURATION_ERROR,
-            "Missing required auth configuration: " + ", ".join(missing),
-            retryable=False,
-        )
-    if settings.douyin_oauth_mode not in {"local_manual_code", "https_callback"}:
-        raise AppError(
-            CONFIGURATION_ERROR,
-            "DOUYIN_OAUTH_MODE must be local_manual_code or https_callback.",
-            retryable=False,
-        )
-
-
 def validate_for_http(settings: Settings) -> None:
     if settings.mcp_transport == "http" and not settings.mcp_http_api_key:
         raise AppError(
@@ -195,27 +136,3 @@ def validate_for_http(settings: Settings) -> None:
             "MCP_HTTP_API_KEY is required when MCP_TRANSPORT=http.",
             retryable=False,
         )
-
-
-def normalize_fernet_key(raw_key: str) -> bytes:
-    value = raw_key.strip()
-    if not value:
-        raise AppError(CONFIGURATION_ERROR, "TOKEN_ENCRYPTION_KEY is required.")
-    try:
-        Fernet(value.encode("utf-8"))
-        return value.encode("utf-8")
-    except Exception:
-        digest = sha256(value.encode("utf-8")).digest()
-        return base64.urlsafe_b64encode(digest)
-
-
-def generate_token_key() -> str:
-    return Fernet.generate_key().decode("utf-8")
-
-
-def main() -> None:
-    print(generate_token_key())
-
-
-if __name__ == "__main__":
-    main()

@@ -29,7 +29,7 @@ class ResponseTests(unittest.TestCase):
         self.assertEqual(result["nested"]["safe"], "value")
 
     def test_success_response_sanitizes_payload(self):
-        result = success_response(code="oauth-code", account={"id": "1"})
+        result = success_response(code="authorization-code", account={"id": "1"})
         self.assertEqual(result["code"], REDACTED)
         self.assertEqual(result["status"], "success")
         self.assertTrue(result["ok"])

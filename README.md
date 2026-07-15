@@ -16,7 +16,7 @@
 - 返回新鲜度、字段覆盖率、质量警告和证据快照，便于 Agent 判断结论可信度。
 - 首次成功列表同步建立不可逆的轻量账号指纹，后续发现误切账号时在写入前拒绝同步。
 - profile 锁会在确认原进程退出后自动恢复；无法安全判断时保持锁定，避免并发损坏登录态。
-- 默认 MCP 不依赖抖音 OpenAPI 密钥，也不向 Agent 暴露 `account_id`。
+- 默认 MCP 不需要额外的平台密钥，也不向 Agent 暴露 `account_id`。
 
 ## 一句话安装（Windows）
 
@@ -26,7 +26,7 @@
 帮我克隆并安装 https://github.com/Kuhakucai/douyin-mcp 项目
 ```
 
-Agent 应克隆项目并运行 `easy-install.ps1`，完成项目内虚拟环境、运行依赖、默认配置和本地诊断；首次扫码登录及修改 MCP 客户端配置前必须征得你的确认。详细约束见 [AI 安装指南](docs/ai-install-guide.md)。
+Agent 应克隆项目并运行 `easy-install.ps1`，完成项目内虚拟环境、运行依赖、默认配置和本地诊断；首次扫码登录及修改 MCP 客户端配置前必须征得你的确认。
 
 已克隆项目时，可直接运行：
 
@@ -54,8 +54,6 @@ macOS/Linux 激活虚拟环境：
 ```bash
 source .venv/bin/activate
 ```
-
-浏览器主线无需配置 `TOKEN_ENCRYPTION_KEY`、`DOUYIN_CLIENT_KEY` 或 `DOUYIN_CLIENT_SECRET`。这些变量只供历史 OpenAPI 兼容入口使用。
 
 推荐配置：
 
@@ -121,7 +119,7 @@ douyin-mcp performance <video_id> --period 30d
 }
 ```
 
-默认入口 `douyin_creator_mcp.server` 只注册浏览器单账号工具。历史 OpenAPI 容器保留在代码中作为兼容入口，不会出现在默认工具集。
+默认入口 `douyin_creator_mcp.server` 仅注册浏览器单账号工具。
 
 ## MCP 工具
 
@@ -208,11 +206,4 @@ python -m compileall -q src tests
 python -m pytest -q
 ```
 
-当前自动化基线：87 项测试通过，另有 6 个参数化子测试通过。
-
-相关文档：
-
-- [产品闭环 PRD](docs/user-usability-closure-plan.md)
-- [技术可行性报告](docs/user-usability-technical-feasibility-report.md)
-- [浏览器会话说明](docs/browser-session.md)
-- [限制说明](docs/limitations.md)
+当前自动化基线：79 项测试通过，另有 6 个参数化子测试通过。

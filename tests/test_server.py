@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from douyin_creator_mcp.config import Settings, generate_token_key
+from douyin_creator_mcp.config import Settings
 from douyin_creator_mcp import server
 
 
@@ -19,17 +19,15 @@ class FakeMCP:
 
 
 class ServerTests(unittest.TestCase):
-    def test_browser_container_does_not_require_openapi_or_token_key(self) -> None:
+    def test_browser_container_has_no_openapi_requirements(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             settings = Settings(
                 data_dir=Path(tmp),
                 douyin_browser_profile_dir=Path(tmp) / "profile",
-                token_encryption_key="",
             )
             container = server.build_browser_container(settings)
 
             self.assertEqual(container.db.schema_version(), "browser-v1")
-            self.assertEqual(container.settings.token_encryption_key, "")
 
     def test_default_mcp_only_registers_browser_tools(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -47,17 +45,6 @@ class ServerTests(unittest.TestCase):
             self.assertTrue(result.tools)
             self.assertTrue(all(name.startswith("douyin_browser_") for name in result.tools))
             self.assertFalse(any("auth" in name or "account" in name for name in result.tools))
-
-    def test_legacy_container_remains_available(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            settings = Settings(
-                data_dir=Path(tmp),
-                douyin_browser_profile_dir=Path(tmp) / "profile",
-                token_encryption_key=generate_token_key(),
-                api_mapping_file=Path("docs/api-mapping.md"),
-            )
-            self.assertIsNotNone(server.build_container(settings))
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,7 +11,6 @@ if str(SRC) not in sys.path:
 from douyin_creator_mcp.config import (
     Settings,
     ensure_runtime_dirs,
-    generate_token_key,
     load_settings,
     validate_for_http,
 )
@@ -24,8 +23,6 @@ class ConfigTests(unittest.TestCase):
             {
                 "MCP_TRANSPORT": "http",
                 "MCP_PORT": "9000",
-                "DOUYIN_SCOPES": "user_info,fans.data",
-                "TOKEN_ENCRYPTION_KEY": "abc",
                 "DOUYIN_BROWSER_PAGE_SETTLE_MS": "2500",
             },
             dotenv_path="missing.env",
@@ -33,18 +30,17 @@ class ConfigTests(unittest.TestCase):
 
         self.assertEqual(settings.mcp_transport, "http")
         self.assertEqual(settings.mcp_port, 9000)
-        self.assertEqual(settings.douyin_scopes, ("user_info", "fans.data"))
         self.assertEqual(settings.douyin_browser_page_settle_ms, 2500)
 
     def test_runtime_dirs_are_created(self):
         with tempfile.TemporaryDirectory() as tmp:
-            settings = Settings(data_dir=Path(tmp), token_encryption_key=generate_token_key())
+            settings = Settings(data_dir=Path(tmp))
             ensure_runtime_dirs(settings)
             self.assertTrue((Path(tmp) / "reports").exists())
             self.assertTrue((Path(tmp) / "logs").exists())
 
     def test_http_mode_requires_api_key(self):
-        settings = Settings(mcp_transport="http", token_encryption_key=generate_token_key())
+        settings = Settings(mcp_transport="http")
         with self.assertRaises(AppError):
             validate_for_http(settings)
 

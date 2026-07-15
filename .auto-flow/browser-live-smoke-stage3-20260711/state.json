@@ -1,9 +1,0 @@
-{
-  "name": "browser-live-smoke-stage3",
-  "workflow": "auto-plan-and-execute",
-  "created_at": "2026-07-11",
-  "current_stage": "complete",
-  "plan_round": 1,
-  "execution_round": 2,
-  "status": "complete"
-}

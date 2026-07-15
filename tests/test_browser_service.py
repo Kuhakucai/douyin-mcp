@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import tempfile
 import unittest
 
-from douyin_creator_mcp.config import Settings, generate_token_key
+from douyin_creator_mcp.config import Settings
 from douyin_creator_mcp.errors import ACCOUNT_MISMATCH, AppError
 from douyin_creator_mcp.services.browser_service import BrowserService
 from douyin_creator_mcp.storage.db import Database
@@ -104,7 +104,6 @@ def make_db(tmp: str) -> Database:
 def make_settings(tmp: str, auto_close: bool = True) -> Settings:
     return Settings(
         data_dir=Path(tmp),
-        token_encryption_key=generate_token_key(),
         douyin_browser_profile_dir=Path(tmp) / "profile",
         douyin_browser_auto_close=auto_close,
     )
