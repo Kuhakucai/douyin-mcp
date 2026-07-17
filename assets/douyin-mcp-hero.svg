@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">douyin-mcp workflow</title>
+  <desc id="desc">Creator Center data flows through local storage and MCP tools into evidence-backed AI insights.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="40" y1="20" x2="1140" y2="430" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#101828"/>
+      <stop offset="0.52" stop-color="#090D17"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="170" y1="90" x2="650" y2="350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#25F4EE"/>
+      <stop offset="0.5" stop-color="#67E8F9"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+    <linearGradient id="pink" x1="875" y1="105" x2="1110" y2="350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FE2C55"/>
+      <stop offset="1" stop-color="#A855F7"/>
+    </linearGradient>
+    <radialGradient id="glowCyan" cx="0" cy="0" r="1" gradientTransform="translate(826 183) rotate(90) scale(230)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowPink" cx="0" cy="0" r="1" gradientTransform="translate(1114 346) rotate(90) scale(200)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FE2C55" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#FE2C55" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="1.5" cy="1.5" r="1.5" fill="#94A3B8" fill-opacity="0.11"/>
+    </pattern>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#020617" flood-opacity="0.5"/>
+    </filter>
+    <filter id="softGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+  </defs>
+
+  <rect x="1" y="1" width="1198" height="428" rx="28" fill="url(#bg)"/>
+  <rect x="1" y="1" width="1198" height="428" rx="28" fill="url(#dots)"/>
+  <rect x="1" y="1" width="1198" height="428" rx="28" stroke="#334155" stroke-opacity="0.78" stroke-width="2"/>
+  <ellipse cx="826" cy="183" rx="286" ry="250" fill="url(#glowCyan)"/>
+  <ellipse cx="1114" cy="346" rx="240" ry="205" fill="url(#glowPink)"/>
+
+  <g font-family="Inter, Segoe UI, Arial, sans-serif">
+    <g transform="translate(62 48)">
+      <rect width="268" height="34" rx="17" fill="#0F172A" stroke="#334155"/>
+      <circle cx="18" cy="17" r="5" fill="#25F4EE"/>
+      <text x="34" y="22" fill="#CBD5E1" font-size="12" font-weight="700" letter-spacing="1.6">LOCAL-FIRST CREATOR ANALYTICS</text>
+    </g>
+
+    <text x="62" y="145" fill="#F8FAFC" font-size="44" font-weight="760" letter-spacing="-1.2">Creator data,</text>
+    <text x="62" y="198" fill="url(#accent)" font-size="44" font-weight="760" letter-spacing="-1.2">ready for AI.</text>
+    <text x="62" y="240" fill="#94A3B8" font-size="17">Sync visible metrics locally. Query, compare and review</text>
+    <text x="62" y="267" fill="#94A3B8" font-size="17">with freshness, coverage and evidence attached.</text>
+
+    <g transform="translate(62 306)">
+      <rect width="128" height="38" rx="19" fill="#16202F" stroke="#334155"/>
+      <circle cx="20" cy="19" r="6" fill="#25F4EE" fill-opacity="0.9"/>
+      <text x="34" y="24" fill="#E2E8F0" font-size="13" font-weight="650">Visible data</text>
+    </g>
+    <g transform="translate(200 306)">
+      <rect width="126" height="38" rx="19" fill="#16202F" stroke="#334155"/>
+      <path d="M18 14V12.5A5.5 5.5 0 0 1 29 12.5V14M15 14H32V27H15V14Z" stroke="#67E8F9" stroke-width="1.8" stroke-linejoin="round"/>
+      <text x="42" y="24" fill="#E2E8F0" font-size="13" font-weight="650">Local only</text>
+    </g>
+    <g transform="translate(336 306)">
+      <rect width="145" height="38" rx="19" fill="#16202F" stroke="#334155"/>
+      <path d="M17 14H31M17 19H31M17 24H26" stroke="#A78BFA" stroke-width="2" stroke-linecap="round"/>
+      <text x="42" y="24" fill="#E2E8F0" font-size="13" font-weight="650">13 MCP tools</text>
+    </g>
+
+    <g filter="url(#shadow)">
+      <rect x="620" y="74" width="510" height="286" rx="26" fill="#0B1220" fill-opacity="0.9" stroke="#334155"/>
+
+      <g transform="translate(650 105)">
+        <rect width="132" height="102" rx="18" fill="#121C2B" stroke="#334155"/>
+        <rect x="18" y="18" width="42" height="42" rx="12" fill="#132D35"/>
+        <path d="M28 48V38M39 48V28M50 48V34" stroke="#25F4EE" stroke-width="4" stroke-linecap="round"/>
+        <text x="18" y="82" fill="#F1F5F9" font-size="13" font-weight="700">CREATOR</text>
+        <text x="18" y="96" fill="#64748B" font-size="10" font-weight="650" letter-spacing="1">CENTER</text>
+      </g>
+
+      <path d="M792 156H825" stroke="#475569" stroke-width="2" stroke-dasharray="4 5"/>
+      <path d="M819 151L825 156L819 161" stroke="#67E8F9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <g transform="translate(835 105)">
+        <rect width="132" height="102" rx="18" fill="#121C2B" stroke="#334155"/>
+        <ellipse cx="39" cy="31" rx="20" ry="9" fill="#1D3445" stroke="#67E8F9" stroke-width="1.5"/>
+        <path d="M19 31V49C19 54 28 58 39 58C50 58 59 54 59 49V31" stroke="#67E8F9" stroke-width="1.5"/>
+        <path d="M19 40C19 45 28 49 39 49C50 49 59 45 59 40" stroke="#67E8F9" stroke-width="1.5"/>
+        <text x="18" y="82" fill="#F1F5F9" font-size="13" font-weight="700">SQLITE</text>
+        <text x="18" y="96" fill="#64748B" font-size="10" font-weight="650" letter-spacing="1">LOCAL</text>
+      </g>
+
+      <path d="M977 156H1010" stroke="#475569" stroke-width="2" stroke-dasharray="4 5"/>
+      <path d="M1004 151L1010 156L1004 161" stroke="#A78BFA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <g transform="translate(1020 105)">
+        <rect width="80" height="102" rx="18" fill="#171628" stroke="#594A77"/>
+        <circle cx="40" cy="34" r="17" fill="url(#pink)" opacity="0.9"/>
+        <text x="40" y="40" fill="#FFFFFF" font-size="17" font-weight="800" text-anchor="middle">AI</text>
+        <text x="40" y="82" fill="#F1F5F9" font-size="13" font-weight="700" text-anchor="middle">AGENT</text>
+        <text x="40" y="96" fill="#8B7AA8" font-size="10" font-weight="650" letter-spacing="1" text-anchor="middle">INSIGHT</text>
+      </g>
+
+      <g transform="translate(650 232)">
+        <rect width="450" height="98" rx="18" fill="#101827" stroke="#26364C"/>
+        <text x="20" y="25" fill="#94A3B8" font-size="10" font-weight="700" letter-spacing="1.4">EVIDENCE-BACKED REVIEW</text>
+        <text x="20" y="51" fill="#F8FAFC" font-size="15" font-weight="700">Recent videos · 30 days</text>
+        <rect x="20" y="65" width="230" height="8" rx="4" fill="#1E293B"/>
+        <rect x="20" y="65" width="188" height="8" rx="4" fill="#25F4EE"/>
+        <rect x="268" y="23" width="74" height="52" rx="12" fill="#131F2E"/>
+        <text x="305" y="45" fill="#67E8F9" font-size="17" font-weight="800" text-anchor="middle">92%</text>
+        <text x="305" y="62" fill="#64748B" font-size="9" font-weight="700" text-anchor="middle">COVERAGE</text>
+        <rect x="352" y="23" width="78" height="52" rx="12" fill="#1B1728"/>
+        <text x="391" y="45" fill="#C4B5FD" font-size="17" font-weight="800" text-anchor="middle">fresh</text>
+        <text x="391" y="62" fill="#74668B" font-size="9" font-weight="700" text-anchor="middle">CACHE</text>
+      </g>
+    </g>
+  </g>
+
+  <circle cx="583" cy="72" r="3" fill="#25F4EE"/>
+  <circle cx="1133" cy="75" r="3" fill="#FE2C55"/>
+  <circle cx="581" cy="72" r="12" fill="#25F4EE" fill-opacity="0.16" filter="url(#softGlow)"/>
+  <circle cx="1133" cy="75" r="12" fill="#FE2C55" fill-opacity="0.16" filter="url(#softGlow)"/>
+</svg>
