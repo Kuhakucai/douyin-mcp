@@ -113,7 +113,13 @@ douyin-mcp acknowledge-platform-risk --yes
       "env": {
         "MCP_TRANSPORT": "stdio",
         "DATA_DIR": "D:/path/to/douyin-mcp/data",
-        "DOUYIN_BROWSER_PROFILE_DIR": "D:/path/to/douyin-mcp/data/browser-profile"
+        "DOUYIN_BROWSER_PROFILE_DIR": "D:/path/to/douyin-mcp/data/browser-profile",
+        "TRANSCRIPT_INGESTION_ENABLED": "false",
+        "TRANSCRIPT_AUTO_WARMUP_ENABLED": "true",
+        "TRANSCRIPT_WARMUP_RECENT_LIMIT": "5",
+        "TRANSCRIPT_AUTO_INGEST_NEW_VIDEOS": "true",
+        "TRANSCRIPT_AUTO_NEW_VIDEO_LIMIT": "20",
+        "TRANSCRIPT_AUTO_PREPARE_ANALYSIS": "true"
       }
     }
   }
@@ -127,6 +133,7 @@ douyin-mcp acknowledge-platform-risk --yes
 ```text
 检查我的抖音数据状态。如果还没有登录，打开浏览器让我扫码；
 登录后同步作品列表，再分批同步最近 20 条作品详情。
+列表同步完成后不要等待全部历史视频转写；在后台预热最近 5 条公开视频文案。
 完成后告诉我数据时间、字段覆盖率、缺失项和质量警告。
 ```
 
@@ -145,6 +152,8 @@ douyin-mcp acknowledge-platform-risk --yes
 
 - 查询作品列表、单条作品表现和历史快照。
 - 对比 2～20 条作品的关键指标。
+- 从视频音轨文案中识别选题、内容结构、关键观点、教程步骤和行动价值。
+- 分析或对比所需文案尚未入库时，自动创建后台任务，完成后继续分析。
 - 计算点赞率、收藏率、评论率、分享率、播放率和互动率。
 - 使用透明、带版本的规则进行轻量潜力排序。
 - 生成带数据时间、覆盖率、缺失项和证据引用的复盘上下文。
@@ -172,6 +181,8 @@ douyin-mcp acknowledge-platform-risk --yes
 
 - “找出最近 30 天互动率最高的 5 条作品，并说明共同点。”
 - “对比这 3 条视频的完播率、收藏率和涨粉表现。”
+- “结合这 3 条视频的音轨文案和表现数据，对比选题、开头钩子、内容结构、行动价值与互动差异；缺少文案时自动补齐。”
+- “提取这条视频的教程步骤和关键结论，并标注对应时间段。”
 - “哪些作品值得做续集？说明排序依据和数据局限。”
 - “导出全部历史快照为 JSON。”
 
@@ -221,7 +232,7 @@ douyin-mcp status
 
 ## MCP 工具
 
-默认入口提供 13 个浏览器数据工具。
+默认入口保留原有 13 个浏览器数据工具，并新增 9 个本地视频文案流水线工具。
 
 <details open>
 <summary><strong>查看 MCP 工具列表</strong></summary>
@@ -241,10 +252,63 @@ douyin-mcp status
 | `douyin_browser_rank_video_potential` | 使用透明、带版本的规则进行轻量排序 |
 | `douyin_browser_generate_review` | 生成带证据和警告的复盘上下文 |
 | `douyin_browser_export_data` | 导出 JSON 或 CSV |
+| `douyin_browser_submit_transcript_run` | 提交指定/近期文案任务；`all_public=true` 时显式回溯全部公开视频 |
+| `douyin_browser_get_transcript_run` | 查询逐视频阶段和逐 run 计数 |
+| `douyin_browser_list_transcript_runs` | 分页列出历史文案任务 |
+| `douyin_browser_cancel_transcript_run` | 取消当前 run 的需求，不误停共享 job |
+| `douyin_browser_retry_transcript_run` | 为失败视频创建新的重试 run |
+| `douyin_browser_get_transcript_capabilities` | 诊断 FFmpeg、FFprobe、本地模型和功能门禁 |
+| `douyin_browser_get_transcript_backfill_plan` | 只读预估全量历史回溯的数量、耗时和存储 |
+| `douyin_browser_get_video_transcript` | 按不可变 revision 分页返回原始时间戳分片 |
+| `douyin_browser_get_video_analysis_context` | 返回确定性分析段落；默认自动排队补齐缺失文案 |
 
 </details>
 
 所有工具使用内部账号键 `browser-default`，Agent 无需传递账号 ID。常见业务状态包括 `completed`、`partial`、`cache_hit` 和 `user_action_required`。
+
+### 启用视频文案流水线
+
+该能力默认关闭。仅在确认当前账号、作品权限、平台条款和本地运行依赖后，在 `.env`
+设置 `TRANSCRIPT_INGESTION_ENABLED=true`。安装本地 ASR 可选依赖：
+
+```powershell
+python -m pip install -e ".[asr]"
+```
+
+同时配置已存在的本地模型目录 `TRANSCRIPT_ASR_MODEL_DIR`，并确保 `ffmpeg`、
+`ffprobe` 可执行。运行时不会联网下载模型。MCP 提交只创建持久 run 并立即返回；
+后台 worker 按视频复用全局 job。`analysis_ready` 和 `no_speech` 都是成功终态，
+标点恢复或语义分段不会阻塞分析。
+
+启用后默认采用混合策略，而不是首次启动就处理全部历史视频：
+
+| 场景 | 默认行为 |
+|---|---|
+| 首次成功同步 | 元数据同步立即返回；后台只预热最近 5 条缺失文案的公开视频 |
+| 后续同步发现新公开视频 | 每次最多自动排队 20 条新视频 |
+| Agent 请求尚未入库的视频分析上下文 | 自动创建文案任务并返回 `run_id`，完成后重新读取上下文 |
+| 历史视频 | 默认按需处理，不自动全量回溯 |
+| 全量历史回溯 | 用户明确要求后调用 `douyin_browser_submit_transcript_run(all_public=true)` |
+
+对应配置为：
+
+```dotenv
+TRANSCRIPT_AUTO_WARMUP_ENABLED=true
+TRANSCRIPT_WARMUP_RECENT_LIMIT=5
+TRANSCRIPT_AUTO_INGEST_NEW_VIDEOS=true
+TRANSCRIPT_AUTO_NEW_VIDEO_LIMIT=20
+TRANSCRIPT_AUTO_PREPARE_ANALYSIS=true
+```
+
+`TRANSCRIPT_INGESTION_ENABLED=false` 时，上述自动策略全部不会启动。命令行
+`douyin-mcp sync` 只负责同步作品列表；需要后台预热和自动补齐时，应让保持运行的
+MCP Server 调用 `douyin_browser_sync_creator_data` 或
+`douyin_browser_sync_if_needed`。完整流程、状态说明、Agent 提示词和全量回溯方法见
+[视频文案提取使用说明](docs/TRANSCRIPT_USAGE.md)。
+
+文案分页固定到不可变 revision，游标在进程重启后仍有效；默认只返回标题、时长和
+带时间戳分片。签名媒体 URL、Cookie、Authorization、媒体二进制和绝对本地路径
+不会进入 MCP 响应或持久错误。
 
 ## 工作原理
 
@@ -260,9 +324,9 @@ MCP Client / Agent
         ▼
 douyin_creator_mcp.server
         │
-        ├── BrowserService ── Playwright ── 专用 Chrome profile
-        │
-        └── Database ──────── data/douyin.sqlite
+        ├── BrowserExecutor ─ Playwright ── 专用 Chrome profile
+        ├── TranscriptCoordinator ─ FFmpeg / local ASR
+        └── Database ────────────── data/douyin.sqlite
 ```
 
 列表同步负责发现作品和采集列表页指标，详情同步按批次访问作品详情页。两种来源分别保存为快照，不会互相覆盖。
@@ -291,6 +355,8 @@ douyin_creator_mcp.server
 data/
 ├── browser-profile/    # 专用 Chrome 登录状态
 ├── douyin.sqlite       # 作品、指标快照和同步任务
+├── media/               # 通过校验的本地转写源（不通过 MCP 返回）
+├── staging/             # 可恢复阶段的临时文件
 ├── exports/            # JSON/CSV 导出
 ├── reports/            # 本地复盘产物
 └── logs/
@@ -386,21 +452,34 @@ Copy-Item .env.example .env
 
 ```text
 src/douyin_creator_mcp/
-├── server.py                 # FastMCP 入口和 browser-only 容器
+├── server.py                 # 无副作用 FastMCP 构造
+├── runtime.py                # 实例锁、迁移、executor/worker 生命周期
 ├── cli.py                    # 用户 CLI
 ├── config.py                 # 环境配置
 ├── browser/
 │   ├── session.py            # Playwright 与持久化 profile
+│   ├── executor.py           # 唯一同步 Playwright 所有者线程
+│   ├── commands.py           # 纯值浏览器命令
+│   ├── media_observer.py     # 多 representation 收敛
 │   ├── extractors.py         # 列表/详情提取和规范化
 │   └── profile_lock.py       # 跨进程 profile 锁
 ├── services/
 │   ├── browser_service.py    # 同步、查询、对比、复盘和导出
+│   ├── transcript_coordinator.py # 持久后台 job、lease 与恢复
+│   ├── transcript_policy.py  # 首次预热、增量入队和分析按需补齐
+│   ├── transcript_query.py   # revision 游标与分析上下文
 │   └── metrics.py            # 派生指标与排序公式
 ├── storage/
 │   ├── db.py                 # SQLite、迁移与备份
+│   ├── transcripts.py        # run/job/asset/revision 事务仓储
+│   ├── migrations/           # 有序、带校验和的不可变迁移
 │   └── schemas.sql           # 数据表结构
+├── content/
+│   ├── media.py              # 受控下载、FFprobe 与轨道选择
+│   └── asr.py                # FFmpeg 与本地 faster-whisper
 └── tools/
-    └── browser_tools.py      # 13 个 MCP 工具契约
+    ├── browser_tools.py      # 原 13 个 MCP 工具契约
+    └── transcript_tools.py   # 9 个文案 MCP 工具契约
 
 easy-install.ps1              # Windows 一键安装
 ```
@@ -418,6 +497,8 @@ easy-install.ps1              # Windows 一键安装
 
 ```powershell
 python -m compileall -q src
+python -m unittest discover -s tests -v
+python scripts/validate_transcript_pipeline.py --batch-db data/asr-batch-v1.2/batch.sqlite --read-only
 ```
 
 ### 真实浏览器验收
