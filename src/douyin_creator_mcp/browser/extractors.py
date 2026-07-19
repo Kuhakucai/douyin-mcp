@@ -435,11 +435,32 @@ def normalize_video_record(raw: dict[str, Any]) -> dict[str, Any] | None:
             str(parse_duration_seconds(raw.get("duration")) or ""),
         ]
     )
+    status = str(raw.get("status") or "").strip() or None
+    raw_kind = str(raw.get("content_kind") or raw.get("type") or "").strip().lower()
+    if status and "私密" in status:
+        visibility = "private"
+    elif status and any(marker in status for marker in ("公开", "已发布", "发布成功")):
+        visibility = "public"
+    else:
+        visibility = "unknown"
+    if raw_kind in {"video", "视频"} or (status and "视频" in status):
+        content_kind = "video"
+    elif raw_kind in {"image", "images", "图文", "图片"} or (
+        status and any(marker in status for marker in ("图文", "图片"))
+    ):
+        content_kind = "image"
+    else:
+        # The creator video-management extractor only emits playable cards. Keep
+        # unknown when the page exposes an explicit but unfamiliar kind.
+        content_kind = "video" if not raw_kind else "unknown"
     return {
         "title": title,
         "publish_time": publish_time,
         "duration": parse_duration_seconds(raw.get("duration")),
-        "status": str(raw.get("status") or "").strip() or None,
+        "status": status,
+        "visibility": visibility,
+        "content_kind": content_kind,
+        "classification_source": "creator_card_status_v1",
         "cover_url": sanitize_public_url(raw.get("cover_url")),
         "video_url": video_url,
         "platform_item_id": platform_item_id,

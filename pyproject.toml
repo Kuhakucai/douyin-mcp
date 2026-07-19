@@ -12,10 +12,13 @@ license = "AGPL-3.0-only"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
-  "fastmcp>=2.0",
+  "fastmcp>=3.4,<4",
   "playwright>=1.45",
   "tzdata>=2024.1"
 ]
+
+[project.optional-dependencies]
+asr = ["faster-whisper>=1.1,<2"]
 
 [project.scripts]
 douyin-mcp = "douyin_creator_mcp.cli:main"
@@ -26,7 +29,7 @@ douyin-browser-smoke = "douyin_creator_mcp.browser_smoke:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-douyin_creator_mcp = ["storage/*.sql"]
+douyin_creator_mcp = ["storage/*.sql", "storage/migrations/*.sql"]
 
 [tool.setuptools.data-files]
 "share/doc/douyin-creator-mcp" = ["PLATFORM_COMPLIANCE.md", "AUTHORS.md"]

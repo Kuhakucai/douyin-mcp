@@ -31,6 +31,33 @@ class Settings:
     douyin_detail_parser_version: str = "creator-detail-v2"
     douyin_creator_home_url: str = "https://creator.douyin.com/"
     douyin_creator_video_url: str = "https://creator.douyin.com/creator-micro/content/manage"
+    transcript_ingestion_enabled: bool = False
+    transcript_pipeline_version: str = "transcript-v1"
+    transcript_worker_count: int = 1
+    transcript_lease_seconds: int = 30
+    transcript_heartbeat_seconds: int = 5
+    transcript_max_attempts: int = 2
+    transcript_response_max_bytes: int = 262_144
+    transcript_default_max_chars: int = 12_000
+    transcript_media_max_bytes: int = 512 * 1024 * 1024
+    transcript_media_min_free_bytes: int = 1024 * 1024 * 1024
+    transcript_bundle_min_observe_ms: int = 1500
+    transcript_bundle_multi_stable_ms: int = 350
+    transcript_bundle_single_stable_ms: int = 750
+    transcript_bundle_max_observe_ms: int = 6000
+    transcript_ffmpeg_path: str = "ffmpeg"
+    transcript_ffprobe_path: str = "ffprobe"
+    transcript_process_timeout_seconds: int = 600
+    transcript_asr_model_dir: Path | None = None
+    transcript_asr_model_size: str = "small"
+    transcript_asr_device: str = "cpu"
+    transcript_asr_compute_type: str = "int8"
+    transcript_keep_reference_video: bool = False
+    transcript_auto_warmup_enabled: bool = True
+    transcript_warmup_recent_limit: int = 5
+    transcript_auto_ingest_new_videos: bool = True
+    transcript_auto_new_video_limit: int = 20
+    transcript_auto_prepare_analysis: bool = True
 
 
 def _read_dotenv(path: Path) -> dict[str, str]:
@@ -74,7 +101,7 @@ def load_settings(
     file_env = _read_dotenv(Path(dotenv_path))
     merged = dict(file_env)
     merged.update(os.environ if env is None else env)
-    return Settings(
+    settings = Settings(
         mcp_transport=_get(merged, "MCP_TRANSPORT", "stdio").lower(),
         mcp_host=_get(merged, "MCP_HOST", "127.0.0.1"),
         mcp_port=_get_int(merged, "MCP_PORT", 8787),
@@ -118,7 +145,152 @@ def load_settings(
             "DOUYIN_CREATOR_VIDEO_URL",
             "https://creator.douyin.com/creator-micro/content/manage",
         ),
+        transcript_ingestion_enabled=_get_bool(
+            merged, "TRANSCRIPT_INGESTION_ENABLED", False
+        ),
+        transcript_pipeline_version=_get(
+            merged, "TRANSCRIPT_PIPELINE_VERSION", "transcript-v1"
+        ),
+        transcript_worker_count=_get_int(merged, "TRANSCRIPT_WORKER_COUNT", 1),
+        transcript_lease_seconds=_get_int(merged, "TRANSCRIPT_LEASE_SECONDS", 30),
+        transcript_heartbeat_seconds=_get_int(
+            merged, "TRANSCRIPT_HEARTBEAT_SECONDS", 5
+        ),
+        transcript_max_attempts=_get_int(merged, "TRANSCRIPT_MAX_ATTEMPTS", 2),
+        transcript_response_max_bytes=_get_int(
+            merged, "TRANSCRIPT_RESPONSE_MAX_BYTES", 262_144
+        ),
+        transcript_default_max_chars=_get_int(
+            merged, "TRANSCRIPT_DEFAULT_MAX_CHARS", 12_000
+        ),
+        transcript_media_max_bytes=_get_int(
+            merged, "TRANSCRIPT_MEDIA_MAX_BYTES", 512 * 1024 * 1024
+        ),
+        transcript_media_min_free_bytes=_get_int(
+            merged, "TRANSCRIPT_MEDIA_MIN_FREE_BYTES", 1024 * 1024 * 1024
+        ),
+        transcript_bundle_min_observe_ms=_get_int(
+            merged, "TRANSCRIPT_BUNDLE_MIN_OBSERVE_MS", 1500
+        ),
+        transcript_bundle_multi_stable_ms=_get_int(
+            merged, "TRANSCRIPT_BUNDLE_MULTI_STABLE_MS", 350
+        ),
+        transcript_bundle_single_stable_ms=_get_int(
+            merged, "TRANSCRIPT_BUNDLE_SINGLE_STABLE_MS", 750
+        ),
+        transcript_bundle_max_observe_ms=_get_int(
+            merged, "TRANSCRIPT_BUNDLE_MAX_OBSERVE_MS", 6000
+        ),
+        transcript_ffmpeg_path=_get(merged, "TRANSCRIPT_FFMPEG_PATH", "ffmpeg"),
+        transcript_ffprobe_path=_get(merged, "TRANSCRIPT_FFPROBE_PATH", "ffprobe"),
+        transcript_process_timeout_seconds=_get_int(
+            merged, "TRANSCRIPT_PROCESS_TIMEOUT_SECONDS", 600
+        ),
+        transcript_asr_model_dir=(
+            Path(value)
+            if (value := _get_optional(merged, "TRANSCRIPT_ASR_MODEL_DIR"))
+            else None
+        ),
+        transcript_asr_model_size=_get(
+            merged, "TRANSCRIPT_ASR_MODEL_SIZE", "small"
+        ),
+        transcript_asr_device=_get(merged, "TRANSCRIPT_ASR_DEVICE", "cpu"),
+        transcript_asr_compute_type=_get(
+            merged, "TRANSCRIPT_ASR_COMPUTE_TYPE", "int8"
+        ),
+        transcript_keep_reference_video=_get_bool(
+            merged, "TRANSCRIPT_KEEP_REFERENCE_VIDEO", False
+        ),
+        transcript_auto_warmup_enabled=_get_bool(
+            merged, "TRANSCRIPT_AUTO_WARMUP_ENABLED", True
+        ),
+        transcript_warmup_recent_limit=_get_int(
+            merged, "TRANSCRIPT_WARMUP_RECENT_LIMIT", 5
+        ),
+        transcript_auto_ingest_new_videos=_get_bool(
+            merged, "TRANSCRIPT_AUTO_INGEST_NEW_VIDEOS", True
+        ),
+        transcript_auto_new_video_limit=_get_int(
+            merged, "TRANSCRIPT_AUTO_NEW_VIDEO_LIMIT", 20
+        ),
+        transcript_auto_prepare_analysis=_get_bool(
+            merged, "TRANSCRIPT_AUTO_PREPARE_ANALYSIS", True
+        ),
     )
+    _validate_transcript_settings(settings)
+    return settings
+
+
+def _validate_transcript_settings(settings: Settings) -> None:
+    if not settings.transcript_pipeline_version.strip():
+        raise AppError(CONFIGURATION_ERROR, "TRANSCRIPT_PIPELINE_VERSION cannot be empty.")
+    bounded = {
+        "TRANSCRIPT_WORKER_COUNT": (settings.transcript_worker_count, 1, 4),
+        "TRANSCRIPT_LEASE_SECONDS": (settings.transcript_lease_seconds, 10, 300),
+        "TRANSCRIPT_HEARTBEAT_SECONDS": (
+            settings.transcript_heartbeat_seconds,
+            1,
+            60,
+        ),
+        "TRANSCRIPT_MAX_ATTEMPTS": (settings.transcript_max_attempts, 1, 10),
+        "TRANSCRIPT_RESPONSE_MAX_BYTES": (
+            settings.transcript_response_max_bytes,
+            16_384,
+            262_144,
+        ),
+        "TRANSCRIPT_DEFAULT_MAX_CHARS": (
+            settings.transcript_default_max_chars,
+            1_000,
+            100_000,
+        ),
+        "TRANSCRIPT_MEDIA_MAX_BYTES": (
+            settings.transcript_media_max_bytes,
+            1_048_576,
+            2 * 1024 * 1024 * 1024,
+        ),
+        "TRANSCRIPT_MEDIA_MIN_FREE_BYTES": (
+            settings.transcript_media_min_free_bytes,
+            0,
+            20 * 1024 * 1024 * 1024,
+        ),
+        "TRANSCRIPT_PROCESS_TIMEOUT_SECONDS": (
+            settings.transcript_process_timeout_seconds,
+            10,
+            3600,
+        ),
+        "TRANSCRIPT_WARMUP_RECENT_LIMIT": (
+            settings.transcript_warmup_recent_limit,
+            1,
+            20,
+        ),
+        "TRANSCRIPT_AUTO_NEW_VIDEO_LIMIT": (
+            settings.transcript_auto_new_video_limit,
+            1,
+            100,
+        ),
+    }
+    for name, (value, lower, upper) in bounded.items():
+        if not lower <= value <= upper:
+            raise AppError(
+                CONFIGURATION_ERROR,
+                f"{name} must be between {lower} and {upper}.",
+            )
+    if settings.transcript_heartbeat_seconds * 2 >= settings.transcript_lease_seconds:
+        raise AppError(
+            CONFIGURATION_ERROR,
+            "TRANSCRIPT_HEARTBEAT_SECONDS must be less than half the lease.",
+        )
+    windows = (
+        settings.transcript_bundle_multi_stable_ms,
+        settings.transcript_bundle_single_stable_ms,
+        settings.transcript_bundle_min_observe_ms,
+        settings.transcript_bundle_max_observe_ms,
+    )
+    if not (0 < windows[0] <= windows[1] <= windows[2] <= windows[3] <= 30_000):
+        raise AppError(
+            CONFIGURATION_ERROR,
+            "Bundle windows must satisfy 0 < multi <= single <= min <= max <= 30000.",
+        )
 
 
 def ensure_runtime_dirs(settings: Settings) -> None:
@@ -126,6 +298,8 @@ def ensure_runtime_dirs(settings: Settings) -> None:
     (settings.data_dir / "reports").mkdir(parents=True, exist_ok=True)
     (settings.data_dir / "logs").mkdir(parents=True, exist_ok=True)
     (settings.data_dir / "exports").mkdir(parents=True, exist_ok=True)
+    (settings.data_dir / "media").mkdir(parents=True, exist_ok=True)
+    (settings.data_dir / "staging").mkdir(parents=True, exist_ok=True)
     settings.douyin_browser_profile_dir.mkdir(parents=True, exist_ok=True)
 
 

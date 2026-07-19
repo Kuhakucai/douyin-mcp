@@ -95,7 +95,29 @@ def _mcp_config(service: BrowserService) -> dict[str, Any]:
         "DOUYIN_BROWSER_PROFILE_DIR": str(
             service.settings.douyin_browser_profile_dir.resolve()
         ),
+        "TRANSCRIPT_INGESTION_ENABLED": str(
+            service.settings.transcript_ingestion_enabled
+        ).lower(),
+        "TRANSCRIPT_AUTO_WARMUP_ENABLED": str(
+            service.settings.transcript_auto_warmup_enabled
+        ).lower(),
+        "TRANSCRIPT_WARMUP_RECENT_LIMIT": str(
+            service.settings.transcript_warmup_recent_limit
+        ),
+        "TRANSCRIPT_AUTO_INGEST_NEW_VIDEOS": str(
+            service.settings.transcript_auto_ingest_new_videos
+        ).lower(),
+        "TRANSCRIPT_AUTO_NEW_VIDEO_LIMIT": str(
+            service.settings.transcript_auto_new_video_limit
+        ),
+        "TRANSCRIPT_AUTO_PREPARE_ANALYSIS": str(
+            service.settings.transcript_auto_prepare_analysis
+        ).lower(),
     }
+    if service.settings.transcript_asr_model_dir is not None:
+        environment["TRANSCRIPT_ASR_MODEL_DIR"] = str(
+            service.settings.transcript_asr_model_dir.resolve()
+        )
     return {
         "mcpServers": {
             "douyin-creator": {

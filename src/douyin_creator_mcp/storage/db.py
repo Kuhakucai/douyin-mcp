@@ -1,33 +1,11 @@
-"""Small SQLite wrapper used by the service layer."""
+"""SQLite connections with production PRAGMAs and ordered migrations."""
 
 from __future__ import annotations
 
 import sqlite3
-import shutil
 from contextlib import closing, contextmanager
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
-
-
-SCHEMA_VERSION = "browser-v1"
-
-_ADDED_COLUMNS: dict[str, dict[str, str]] = {
-    "videos": {
-        "status": "TEXT",
-        "source_fingerprint": "TEXT",
-        "parser_version": "TEXT",
-        "first_seen_at": "TEXT",
-        "last_seen_at": "TEXT",
-        "is_active": "INTEGER NOT NULL DEFAULT 1",
-    },
-    "sync_jobs": {
-        "progress_json": "TEXT",
-        "coverage_json": "TEXT",
-        "resume_cursor": "INTEGER",
-        "parser_version": "TEXT",
-    },
-}
 
 
 class Database:
@@ -35,111 +13,83 @@ class Database:
         self.path = Path(path)
         self.last_backup_path: Path | None = None
 
-    def connect(self) -> sqlite3.Connection:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(self.path)
+    def connect(self, *, read_only: bool = False) -> sqlite3.Connection:
+        if read_only:
+            uri = f"{self.path.resolve().as_uri()}?mode=ro"
+            conn = sqlite3.connect(uri, uri=True, check_same_thread=True)
+        else:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            conn = sqlite3.connect(self.path, check_same_thread=True)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("PRAGMA busy_timeout = 5000")
+        if not read_only:
+            conn.execute("PRAGMA journal_mode = WAL")
+            conn.execute("PRAGMA synchronous = NORMAL")
         return conn
 
     def init_schema(self, schema_path: Path | str | None = None) -> Path | None:
-        self.last_backup_path = None
-        path = Path(schema_path) if schema_path else Path(__file__).with_name("schemas.sql")
-        sql = path.read_text(encoding="utf-8")
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        if self._needs_v1_backup():
-            self.last_backup_path = self._backup_database()
-        try:
-            with closing(self.connect()) as conn:
-                with conn:
-                    conn.executescript(sql)
-                    self._ensure_added_columns(conn)
-                    conn.execute(
-                        """
-                        INSERT OR IGNORE INTO schema_migrations (version, applied_at)
-                        VALUES (?, ?)
-                        """,
-                        (SCHEMA_VERSION, self._utc_now_iso()),
-                    )
-        except Exception:
-            if self.last_backup_path is not None and self.last_backup_path.exists():
-                shutil.copy2(self.last_backup_path, self.path)
-            raise
+        """Install or migrate the database.
+
+        ``schema_path`` is kept only for the legacy public API. Custom schema replay is
+        deliberately rejected because published migrations are immutable.
+        """
+        if schema_path is not None:
+            raise ValueError("Custom schema replay is unsupported; use MigrationRunner.")
+        from .migration import MigrationRunner
+
+        runner = MigrationRunner(self)
+        runner.apply()
+        self.last_backup_path = runner.backup_path
         return self.last_backup_path
 
     def schema_version(self) -> str | None:
         if not self.path.exists():
             return None
         try:
-            row = self.query_one(
-                "SELECT version FROM schema_migrations ORDER BY applied_at DESC LIMIT 1"
-            )
-        except sqlite3.OperationalError:
+            with closing(self.connect(read_only=True)) as conn:
+                columns = {
+                    str(row["name"])
+                    for row in conn.execute("PRAGMA table_info(schema_migrations)")
+                }
+                if "name" not in columns:
+                    row = conn.execute(
+                        "SELECT version FROM schema_migrations "
+                        "ORDER BY applied_at DESC LIMIT 1"
+                    ).fetchone()
+                    return str(row["version"]) if row else None
+                row = conn.execute(
+                    "SELECT version, name FROM schema_migrations "
+                    "ORDER BY version DESC LIMIT 1"
+                ).fetchone()
+        except sqlite3.Error:
             return None
-        return str(row["version"]) if row else None
-
-    def _needs_v1_backup(self) -> bool:
-        if not self.path.exists() or self.path.stat().st_size == 0:
-            return False
-        with closing(sqlite3.connect(self.path)) as conn:
-            tables = {
-                str(row[0])
-                for row in conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
-                )
-            }
-            if not tables:
-                return False
-            if "schema_migrations" not in tables:
-                return True
-            row = conn.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = ? LIMIT 1",
-                (SCHEMA_VERSION,),
-            ).fetchone()
-            return row is None
-
-    def _backup_database(self) -> Path:
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
-        backup_path = self.path.with_name(f"{self.path.name}.backup-{stamp}")
-        with closing(sqlite3.connect(self.path)) as source:
-            with closing(sqlite3.connect(backup_path)) as target:
-                source.backup(target)
-        return backup_path
-
-    @staticmethod
-    def _ensure_added_columns(conn: sqlite3.Connection) -> None:
-        for table, columns in _ADDED_COLUMNS.items():
-            existing = {
-                str(row[1]) for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
-            }
-            for name, definition in columns.items():
-                if name not in existing:
-                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {definition}")
-
-    @staticmethod
-    def _utc_now_iso() -> str:
-        return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+        return f"{row['version']}:{row['name']}" if row else None
 
     def execute(self, sql: str, params: tuple[Any, ...] = ()) -> None:
         with closing(self.connect()) as conn:
             with conn:
                 conn.execute(sql, params)
 
-    def query_one(self, sql: str, params: tuple[Any, ...] = ()) -> dict[str, Any] | None:
-        with closing(self.connect()) as conn:
+    def query_one(
+        self, sql: str, params: tuple[Any, ...] = (), *, read_only: bool = False
+    ) -> dict[str, Any] | None:
+        with closing(self.connect(read_only=read_only)) as conn:
             row = conn.execute(sql, params).fetchone()
         return dict(row) if row else None
 
-    def query_all(self, sql: str, params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
-        with closing(self.connect()) as conn:
+    def query_all(
+        self, sql: str, params: tuple[Any, ...] = (), *, read_only: bool = False
+    ) -> list[dict[str, Any]]:
+        with closing(self.connect(read_only=read_only)) as conn:
             rows = conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
 
     @contextmanager
-    def transaction(self) -> Iterator[sqlite3.Connection]:
+    def transaction(self, *, immediate: bool = False) -> Iterator[sqlite3.Connection]:
         conn = self.connect()
         try:
+            conn.execute("BEGIN IMMEDIATE" if immediate else "BEGIN")
             yield conn
             conn.commit()
         except Exception:
@@ -147,3 +97,17 @@ class Database:
             raise
         finally:
             conn.close()
+
+    def integrity_check(self) -> None:
+        if not self.path.exists():
+            return
+        with closing(self.connect(read_only=True)) as conn:
+            row = conn.execute("PRAGMA integrity_check").fetchone()
+        if not row or str(row[0]).lower() != "ok":
+            raise sqlite3.DatabaseError("SQLite integrity_check failed.")
+
+    def checkpoint(self) -> None:
+        if not self.path.exists():
+            return
+        with closing(self.connect()) as conn:
+            conn.execute("PRAGMA wal_checkpoint(PASSIVE)")

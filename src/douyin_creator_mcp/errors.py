@@ -18,6 +18,19 @@ INVALID_RESPONSE = "invalid_response"
 DATA_NOT_AVAILABLE = "data_not_available"
 CONFIGURATION_ERROR = "configuration_error"
 VALIDATION_ERROR = "validation_error"
+INSTANCE_IN_USE = "instance_in_use"
+LEGACY_SCHEMA_UNRECOGNIZED = "legacy_schema_unrecognized"
+MIGRATION_CHECKSUM_MISMATCH = "migration_checksum_mismatch"
+CURRENT_SCHEMA_INVALID = "current_schema_invalid"
+INVALID_CURSOR = "invalid_cursor"
+TRANSCRIPT_REVISION_GONE = "transcript_revision_gone"
+TRANSCRIPT_DISABLED = "transcript_disabled"
+LEASE_LOST = "lease_lost"
+MEDIA_REJECTED = "media_rejected"
+MEDIA_BUNDLE_AMBIGUOUS = "media_bundle_ambiguous"
+MEDIA_NO_AUDIO_TRACK = "media_no_audio_track"
+PROCESS_FAILED = "process_failed"
+ASR_FAILED = "asr_failed"
 PROFILE_IN_USE = "profile_in_use"
 PARSER_DEGRADED = "parser_degraded"
 VIDEO_IDENTITY_UNRESOLVED = "video_identity_unresolved"
@@ -50,3 +63,11 @@ class AppError(Exception):
         }
         payload.update(self.extra)
         return payload
+
+
+class RetryClass:
+    """Stable retry classification persisted with failed jobs."""
+
+    TRANSIENT = "transient"
+    REQUIRES_USER = "requires_user"
+    PERMANENT = "permanent"

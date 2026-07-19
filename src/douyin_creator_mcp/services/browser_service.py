@@ -10,7 +10,7 @@ import re
 import shutil
 import uuid
 from collections.abc import Callable
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -27,6 +27,8 @@ from ..browser.extractors import (
     extract_detail_metrics,
     extract_page_snapshot,
 )
+from ..browser.commands import LoginStart, LoginStatus, SyncCreatorList, SyncVideoDetails
+from ..browser.executor import BrowserExecutor
 from ..browser.profile_lock import ProfileLock
 from ..browser.session import BrowserSession
 from ..compliance import (
@@ -61,17 +63,25 @@ class BrowserService:
         settings: Settings,
         db: Database,
         session_factory: Callable[[], BrowserSession] | None = None,
+        browser_executor: BrowserExecutor | None = None,
     ) -> None:
         self.settings = settings
         self.db = db
         self._session_factory = session_factory
         self._session: BrowserSession | None = None
         self._active_profile_lock: ProfileLock | None = None
+        self._browser_executor = browser_executor
 
     # Login and status -------------------------------------------------
 
     def login_start(self) -> dict[str, Any]:
         require_platform_risk_acknowledgement(self.settings.data_dir)
+        if self._browser_executor is not None:
+            result = self._browser_executor.execute(LoginStart(headless=False))
+            return {
+                **result,
+                "message": "浏览器已打开。如页面要求登录或验证，请完成扫码后继续。",
+            }
         try:
             with self._browser_access():
                 session = self._get_session(headless=False)
@@ -89,6 +99,15 @@ class BrowserService:
             raise
 
     def login_status(self) -> dict[str, Any]:
+        if self._browser_executor is not None:
+            result = self._browser_executor.execute(LoginStatus())
+            result.setdefault(
+                "message",
+                "浏览器会话尚未启动。需要登录时调用登录工具。"
+                if not result.get("browser_running")
+                else "浏览器会话正在运行。",
+            )
+            return result
         if self._session is None or not self._session.is_running:
             return {
                 "browser_running": False,
@@ -245,34 +264,54 @@ class BrowserService:
         snapshot: dict[str, Any] | None = None
         captured_at = utc_now_iso()
         try:
-            with self._browser_access():
-                session = self._get_session(headless=mode == "background_first")
-                page = session.open_creator_video_page()
-                snapshot = extract_page_snapshot(page)
+            access = self._browser_access() if self._browser_executor is None else nullcontext()
+            with access:
+                if self._browser_executor is not None:
+                    browser_result = self._browser_executor.execute(
+                        SyncCreatorList(headless=mode == "background_first")
+                    )
+                    snapshot = browser_result["snapshot"]
+                    structured_videos = browser_result["videos"]
+                    load_stats = browser_result["load_stats"]
+                    page = None
+                else:
+                    session = self._get_session(headless=mode == "background_first")
+                    page = session.open_creator_video_page()
+                    snapshot = extract_page_snapshot(page)
                 if mode == "background_first" and snapshot["login_status"] in {
                     LOGIN_REQUIRED,
                     VERIFICATION_REQUIRED,
                 }:
                     self.close_browser()
                     self.login_start()
-                    pages = getattr(self._session.context, "pages", None) or []
-                    snapshot = extract_page_snapshot(pages[0]) if pages else snapshot
-                load_stats: dict[str, Any] = {
-                    "initial_card_count": 0,
-                    "current_dom_card_count": 0,
-                    "loaded_card_count": 0,
-                    "page_total_video_count": None,
-                    "scroll_rounds": 0,
-                    "stop_reason": "not_logged_in",
-                }
-                structured_videos: list[dict[str, Any]] = []
+                    if self._browser_executor is not None:
+                        browser_result = self._browser_executor.execute(
+                            SyncCreatorList(headless=False)
+                        )
+                        snapshot = browser_result["snapshot"]
+                        structured_videos = browser_result["videos"]
+                        load_stats = browser_result["load_stats"]
+                    else:
+                        pages = getattr(self._session.context, "pages", None) or []
+                        snapshot = extract_page_snapshot(pages[0]) if pages else snapshot
+                if self._browser_executor is None:
+                    load_stats = {
+                        "initial_card_count": 0,
+                        "current_dom_card_count": 0,
+                        "loaded_card_count": 0,
+                        "page_total_video_count": None,
+                        "scroll_rounds": 0,
+                        "stop_reason": "not_logged_in",
+                    }
+                    structured_videos = []
+                    if snapshot["login_status"] == LOGGED_IN:
+                        structured_videos, load_stats = collect_all_video_cards(page)
+                        snapshot = extract_page_snapshot(
+                            page,
+                            structured_videos=structured_videos,
+                            load_stats=load_stats,
+                        )
                 if snapshot["login_status"] == LOGGED_IN:
-                    structured_videos, load_stats = collect_all_video_cards(page)
-                    snapshot = extract_page_snapshot(
-                        page,
-                        structured_videos=structured_videos,
-                        load_stats=load_stats,
-                    )
                     account_identity = self._verify_browser_account_identity(
                         account_id,
                         structured_videos,
@@ -387,8 +426,13 @@ class BrowserService:
         captured_at: str | None = None
         login_status = LOGGED_IN
         try:
-            with self._browser_access():
-                session = self._get_session(headless=mode == "background_first")
+            access = self._browser_access() if self._browser_executor is None else nullcontext()
+            with access:
+                session = (
+                    self._get_session(headless=mode == "background_first")
+                    if self._browser_executor is None
+                    else None
+                )
                 for index, video in enumerate(batch, start=cursor):
                     if not force and self._has_fresh_detail(video["id"]):
                         cached += 1
@@ -404,19 +448,39 @@ class BrowserService:
                         continue
                     try:
                         had_detail_url = bool(video.get("video_url"))
-                        if had_detail_url:
+                        if self._browser_executor is not None:
+                            browser_result = self._browser_executor.execute(
+                                SyncVideoDetails(
+                                    videos=(dict(video),),
+                                    headless=mode == "background_first",
+                                )
+                            )
+                            item = browser_result["details"][0]
+                            self._bind_video_detail_identity(
+                                video,
+                                str(item["source_url"]),
+                                require_platform_id=not bool(item["had_detail_url"]),
+                            )
+                            detail = item["detail"]
+                        elif had_detail_url:
                             page = session.open_video_detail(str(video["video_url"]))
+                            self._bind_video_detail_identity(
+                                video,
+                                str(getattr(page, "url", "") or ""),
+                                require_platform_id=False,
+                            )
+                            detail = extract_detail_metrics(page, video)
                         else:
                             page = session.open_video_detail_from_list(
                                 str(video.get("title") or ""),
                                 int(video["publish_time"]),
                             )
-                        self._bind_video_detail_identity(
-                            video,
-                            str(getattr(page, "url", "") or ""),
-                            require_platform_id=not had_detail_url,
-                        )
-                        detail = extract_detail_metrics(page, video)
+                            self._bind_video_detail_identity(
+                                video,
+                                str(getattr(page, "url", "") or ""),
+                                require_platform_id=True,
+                            )
+                            detail = extract_detail_metrics(page, video)
                     except AppError as exc:
                         failure = {
                             "video_id": video["id"],
@@ -1042,6 +1106,9 @@ class BrowserService:
         return {"report_id": report_id, "report_path": str(report_path), "summary": summary}
 
     def close_browser(self) -> None:
+        if self._browser_executor is not None:
+            self._browser_executor.close_session()
+            return
         session = self._session
         self._session = None
         try:
@@ -1080,7 +1147,10 @@ class BrowserService:
         return self._session
 
     def _profile_lock(self) -> ProfileLock:
-        return ProfileLock(self.settings.data_dir, self.settings.douyin_profile_lock_filename)
+        return ProfileLock(
+            self.settings.douyin_browser_profile_dir,
+            self.settings.douyin_profile_lock_filename,
+        )
 
     @contextmanager
     def _browser_access(self):
@@ -1329,8 +1399,9 @@ class BrowserService:
                     INSERT INTO videos
                       (id, account_id, item_id, video_id, title, publish_time, cover_url,
                        video_url, duration, status, source_fingerprint, parser_version,
-                       first_seen_at, last_seen_at, is_active, source, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+                       first_seen_at, last_seen_at, is_active, source, created_at, updated_at,
+                       visibility, content_kind, classification_source)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                       item_id = COALESCE(excluded.item_id, videos.item_id),
                       video_id = COALESCE(excluded.video_id, videos.video_id),
@@ -1341,7 +1412,10 @@ class BrowserService:
                       source_fingerprint = excluded.source_fingerprint,
                       parser_version = excluded.parser_version,
                       last_seen_at = excluded.last_seen_at, is_active = 1,
-                      source = excluded.source, updated_at = excluded.updated_at
+                      source = excluded.source, updated_at = excluded.updated_at,
+                      visibility = excluded.visibility,
+                      content_kind = excluded.content_kind,
+                      classification_source = excluded.classification_source
                     """,
                     (
                         local_id,
@@ -1361,6 +1435,9 @@ class BrowserService:
                         "browser_dom",
                         captured_at,
                         captured_at,
+                        video.get("visibility", "unknown"),
+                        video.get("content_kind", "unknown"),
+                        video.get("classification_source"),
                     ),
                 )
                 metric_id = self._local_metric_id(local_id, metric_date)
