@@ -1,7 +1,7 @@
 <div align="center">
   <h1>douyin-mcp</h1>
-  <p><strong>让 AI 读懂你的抖音创作数据</strong></p>
-  <p>本地运行 · 数据可追溯 · 面向个人创作者的 MCP Server</p>
+  <p><strong>让 AI 同时读懂你的抖音创作数据和视频内容</strong></p>
+  <p>本地运行 · 音轨文案按需提取 · 数据可追溯 · 面向个人创作者的 MCP Server</p>
 
   <p>
     <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&amp;logoColor=white" alt="Python 3.11+"></a>
@@ -15,6 +15,7 @@
   <p>
     <a href="#快速开始">快速开始</a> ·
     <a href="#核心能力">核心能力</a> ·
+    <a href="#视频文案提取用到时再加载">视频文案</a> ·
     <a href="#推荐用法">推荐用法</a> ·
     <a href="#mcp-工具">MCP 工具</a> ·
     <a href="#工作原理">工作原理</a> ·
@@ -29,18 +30,21 @@
 
 ## 一分钟了解
 
-`douyin-mcp` 在你的电脑上复用专用 Chrome 登录状态，将抖音创作者中心页面中真实可见的作品和经营指标保存到本地 SQLite，再通过 MCP 提供给支持 MCP 的 AI Agent。
+`douyin-mcp` 在你的电脑上复用专用 Chrome 登录状态，将抖音创作者中心页面中真实可见的作品、经营指标和公开视频音轨文案保存到本地 SQLite，再通过 MCP 提供给支持 MCP 的 AI Agent。AI 不仅能看到“这条视频表现如何”，还能结合“视频具体讲了什么”进行分析和复盘。
 
 | | |
 |---|---|
-| 📊 **读取真实可见数据**<br>增量同步作品列表、播放、点赞、评论、分享、收藏、完播率和涨粉等页面可见指标。 | 🧠 **让 Agent 查询和分析**<br>查询作品、对比表现、计算互动指标、生成复盘上下文，并导出 JSON 或 CSV。 |
+| 📊 **读取真实可见数据**<br>增量同步作品列表、播放、点赞、评论、分享、收藏、完播率和涨粉等页面可见指标。 | 🎙️ **提取视频音轨文案**<br>将公开视频中的说话内容转成带时间戳的本地文案，供 AI 理解选题、钩子、结构和观点。 |
+| 🧠 **结合内容与数据分析**<br>对比视频讲了什么、怎么讲以及最终表现，生成更有依据的内容复盘。 | ⚡ **文案按需加载**<br>首次同步不处理全部历史视频；只预热近期内容，分析缺失文案时自动补齐。 |
 | 🧾 **结论附带证据**<br>返回采集时间、缓存新鲜度、字段覆盖率、缺失原因和质量警告，不用猜测值填空。 | 🔒 **登录凭证留在本地**<br>Cookie 与浏览器状态保存在专用 profile 中，MCP 不向 Agent 返回认证材料。 |
 
 它解决的是一个具体问题：
 
 ```text
-抖音创作者中心  →  本地结构化数据  →  MCP  →  AI Agent
+抖音创作者中心（指标 + 公热视频音轨） → 本地结构化数据 → MCP → AI Agent
 ```
+
+视频文案采用**按需加载**，而不是首次启动就批量处理全部历史视频。这样能更快完成首次同步，减少不必要的媒体下载、CPU 占用和本地存储；当用户真正分析某条视频时，缺失文案会自动进入后台提取队列。
 
 当前范围为 **Windows、本机运行、单用户、单抖音账号**。本项目不提供多账号托管、云端采集、数据转售、未公开接口抓取，或绕过登录、安全验证、权限及风控的能力。
 
@@ -53,6 +57,12 @@
 - Google Chrome
 - 一个支持 MCP 和终端操作的 Agent
 
+如果需要使用视频文案提取，还需要：
+
+- `ffmpeg` 和 `ffprobe`，并确保它们可从命令行执行
+- 本地 `faster-whisper` 兼容模型目录；运行时不会联网下载模型
+- 至少 1 GB 可用磁盘空间；处理较多历史视频时建议预留更多空间
+
 ### 方式一：让 Agent 安装
 
 直接告诉 Agent：
@@ -61,7 +71,9 @@
 帮我克隆并安装 https://github.com/Kuhakucai/douyin-mcp.git 项目
 ```
 
-Agent 应克隆项目并运行 `easy-install.ps1`。脚本会创建项目专用 `.venv`、安装依赖、生成默认 `.env`、初始化数据库并执行环境诊断。
+Agent 应先阅读本 README，再克隆项目并运行 `easy-install.ps1`。脚本会创建项目专用 `.venv`、安装基础依赖、生成默认 `.env`、初始化数据库并执行环境诊断。
+
+基础安装完成后，Agent 应主动说明视频文案功能还需要本地 FFmpeg、ASR 可选依赖和模型目录，并询问用户是否启用。用户确认后，由 Agent 检查或安装依赖、引导用户选择本地模型目录、更新配置并重新执行环境诊断；用户不需要在首次安装指令中了解这些内部参数。
 
 > [!NOTE]
 > 首次扫码登录、修改 MCP 客户端配置或同步真实数据前，Agent 应先展示平台风险并征得你的明确确认。
@@ -77,7 +89,10 @@ cd douyin-mcp
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e .
+# 需要视频文案提取时再安装
+python -m pip install -e ".[asr]"
 Copy-Item .env.example .env
+# 需要视频文案时，先按下方说明编辑 .env
 douyin-mcp init
 douyin-mcp doctor
 ```
@@ -89,6 +104,18 @@ powershell -ExecutionPolicy Bypass -File .\easy-install.ps1
 ```
 
 </details>
+
+需要视频文案时，请在执行 `douyin-mcp init` 前编辑 `.env`：
+
+```dotenv
+TRANSCRIPT_INGESTION_ENABLED=true
+TRANSCRIPT_ASR_MODEL_DIR=D:/path/to/faster-whisper-small
+TRANSCRIPT_ASR_MODEL_SIZE=small
+TRANSCRIPT_ASR_DEVICE=cpu
+TRANSCRIPT_ASR_COMPUTE_TYPE=int8
+```
+
+`TRANSCRIPT_ASR_MODEL_DIR` 必须指向已经存在的本地模型目录。建议随后让 Agent 调用 `douyin_browser_get_transcript_capabilities`，确认 FFmpeg、FFprobe、模型和功能开关都已就绪。
 
 ### 确认平台风险
 
@@ -125,6 +152,9 @@ douyin-mcp acknowledge-platform-risk --yes
   }
 }
 ```
+
+> [!TIP]
+> 上面的 JSON 保留了 `TRANSCRIPT_INGESTION_ENABLED=false` 安全默认值。如果已在 `.env` 中完成文案依赖和模型配置，重新运行 `douyin-mcp init`，其输出会包含 `true` 和绝对模型路径；请以该输出配置 MCP 客户端。
 
 ### 完成首次同步
 
@@ -166,6 +196,55 @@ douyin-mcp acknowledge-platform-risk --yes
 - 列表与详情分别保存为快照，不会混写数据来源。
 - 派生比率只使用同一原始快照中的分子和分母，并记录公式版本。
 - 首次成功同步后绑定当前账号，检测到误切账号时拒绝写入。
+
+## 视频文案提取：用到时再加载
+
+这里的“视频文案”指**视频音轨中实际说出的内容**，不是作品标题、发布描述或画面 OCR。MCP 获取用户本人账号中可访问的公开视频媒体，在本地提取音轨并通过本地 ASR 模型生成原始文本和时间戳分段。
+
+### 为什么不在首次启动时提取全部视频
+
+作品元数据通常可以较快同步，而文案提取需要逐条获取媒体并执行本地语音识别。首次启动就处理全部历史视频，会明显延长等待时间并占用更多 CPU、磁盘和浏览器资源。因此启用文案能力后，默认使用混合策略：
+
+| 使用场景 | 默认行为 | 用户感知 |
+|---|---|---|
+| 首次成功同步 | 作品和指标先入库，后台预热最近 5 条缺少文案的公开视频 | 可以立即查询数据，无需等待全部历史视频 |
+| 后续发现新公开视频 | 每次最多自动排队 20 条新视频 | 新内容逐步具备文案上下文 |
+| 分析尚无文案的视频 | 自动创建按需任务并返回 `run_id` | Agent 等待任务完成后继续分析 |
+| 查询已有文案的视频 | 直接复用当前 revision | 不重复获取或转写 |
+| 处理全部历史视频 | 先估算数量、耗时和存储，用户明确确认后执行 | 避免意外启动长任务 |
+
+### 用户如何使用
+
+通常不需要记忆工具名称，直接向 Agent 描述目标即可：
+
+```text
+提取这条视频的完整音轨文案，保留时间戳分段；如果尚未入库，
+创建后台任务并持续查询，完成后把完整内容展示给我。
+```
+
+```text
+结合这 3 条视频的音轨文案和表现数据，对比选题、开头钩子、
+内容结构、关键观点、行动价值与互动差异；缺少文案时自动补齐。
+```
+
+```text
+先估算提取全部历史公开视频文案需要的数量、时间和存储空间，
+不要立即执行，等我确认后再开始。
+```
+
+按需任务会先返回 `run_id`。Agent 可查询任务直到出现以下结果：
+
+- `analysis_ready`：文案已入库，可以读取完整文本、时间戳分段和分析上下文。
+- `no_speech`：任务成功，但音轨中没有检测到可用语音。
+- `failed`：媒体获取、环境或 ASR 处理失败；应先查看错误原因，再决定是否重试。
+
+### 使用边界
+
+- 只处理当前账号中可访问并被识别为公开视频的作品，不绕过登录、权限或平台验证。
+- 原始 ASR 文本可能存在专有名词、英文缩写和同音词误识别；分析时保留原文，展示前可另做纠错和分段。
+- 文案提取关注音轨语音，不分析画面内容，也不保证识别背景音乐、无声字幕或画面文字。
+- 分析过程中不需要持续播放完整视频；媒体获取完成后，音轨处理和 ASR 在本地后台执行。
+- 默认单 worker 处理，优先保证稳定性；不要通过提高并发绕过平台风控或本机资源限制。
 
 ## 推荐用法
 
@@ -266,19 +345,11 @@ douyin-mcp status
 
 所有工具使用内部账号键 `browser-default`，Agent 无需传递账号 ID。常见业务状态包括 `completed`、`partial`、`cache_hit` 和 `user_action_required`。
 
-### 启用视频文案流水线
+### 文案流水线配置
 
-该能力默认关闭。仅在确认当前账号、作品权限、平台条款和本地运行依赖后，在 `.env`
-设置 `TRANSCRIPT_INGESTION_ENABLED=true`。安装本地 ASR 可选依赖：
+视频文案能力默认关闭。请先完成[视频文案提取：用到时再加载](#视频文案提取用到时再加载)中的依赖与模型配置，再设置 `TRANSCRIPT_INGESTION_ENABLED=true`。运行时不会联网下载模型。
 
-```powershell
-python -m pip install -e ".[asr]"
-```
-
-同时配置已存在的本地模型目录 `TRANSCRIPT_ASR_MODEL_DIR`，并确保 `ffmpeg`、
-`ffprobe` 可执行。运行时不会联网下载模型。MCP 提交只创建持久 run 并立即返回；
-后台 worker 按视频复用全局 job。`analysis_ready` 和 `no_speech` 都是成功终态，
-标点恢复或语义分段不会阻塞分析。
+MCP 提交只创建持久 run 并立即返回；后台 worker 按视频复用全局 job。同一视频已有可用文案时会直接复用，不会重复获取和转写。`analysis_ready` 和 `no_speech` 都是成功终态，标点恢复或语义分段不会阻塞分析。
 
 启用后默认采用混合策略，而不是首次启动就处理全部历史视频：
 
@@ -303,8 +374,7 @@ TRANSCRIPT_AUTO_PREPARE_ANALYSIS=true
 `TRANSCRIPT_INGESTION_ENABLED=false` 时，上述自动策略全部不会启动。命令行
 `douyin-mcp sync` 只负责同步作品列表；需要后台预热和自动补齐时，应让保持运行的
 MCP Server 调用 `douyin_browser_sync_creator_data` 或
-`douyin_browser_sync_if_needed`。完整流程、状态说明、Agent 提示词和全量回溯方法见
-[视频文案提取使用说明](docs/TRANSCRIPT_USAGE.md)。
+`douyin_browser_sync_if_needed`。用户无需直接调用工具；推荐指令、任务状态和全量回溯方法已在上方视频文案章节说明。
 
 文案分页固定到不可变 revision，游标在进程重启后仍有效；默认只返回标题、时长和
 带时间戳分片。签名媒体 URL、Cookie、Authorization、媒体二进制和绝对本地路径
@@ -431,6 +501,34 @@ powershell -ExecutionPolicy Bypass -File .\easy-install.ps1
 
 </details>
 
+<details>
+<summary><strong>文案功能显示未启用或环境不可用</strong></summary>
+
+先让 Agent 调用 `douyin_browser_get_transcript_capabilities`。重点检查：
+
+- `TRANSCRIPT_INGESTION_ENABLED` 是否为 `true`
+- 是否安装了 `.[asr]` 可选依赖
+- `TRANSCRIPT_ASR_MODEL_DIR` 是否指向有效的本地模型目录
+- `ffmpeg` 和 `ffprobe` 是否可以执行
+
+修改 `.env` 后应重新运行 `douyin-mcp init`，更新 MCP 客户端配置并新建会话。
+
+</details>
+
+<details>
+<summary><strong>分析视频时返回 <code>preparing</code> 或 <code>run_id</code></strong></summary>
+
+这是按需加载的正常状态，表示该视频尚无可用文案，后台任务已经创建。不要反复提交同一视频；让 Agent 使用返回的 `run_id` 查询进度，任务完成后再次读取分析上下文即可。媒体获取结束后，ASR 会在本地后台执行，不需要一直播放视频。
+
+</details>
+
+<details>
+<summary><strong>文案任务完成但结果是 <code>no_speech</code></strong></summary>
+
+`no_speech` 是成功终态，表示模型没有在音轨中检测到可用语音。纯音乐、静音、语音过短或被背景声覆盖的视频可能出现该结果。原始 ASR 也可能误识别专有名词和英文缩写；建议保留原文作为证据，在展示或报告阶段再做纠错。
+
+</details>
+
 ## 开发者指南
 
 <details>
@@ -497,8 +595,8 @@ easy-install.ps1              # Windows 一键安装
 
 ```powershell
 python -m compileall -q src
-python -m unittest discover -s tests -v
-python scripts/validate_transcript_pipeline.py --batch-db data/asr-batch-v1.2/batch.sqlite --read-only
+python -m pip check
+douyin-mcp doctor
 ```
 
 ### 真实浏览器验收
