@@ -265,6 +265,18 @@ douyin-mcp acknowledge-platform-risk --yes
 - “哪些作品值得做续集？说明排序依据和数据局限。”
 - “导出全部历史快照为 JSON。”
 
+示例如下：
+
+- 分析作品
+
+  ![](assets\analyze.png)
+
+  
+
+- 更新缓存
+
+![update](assets\update.png)
+
 ## CLI
 
 常用命令：
