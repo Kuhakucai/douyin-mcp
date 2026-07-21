@@ -63,22 +63,28 @@
 - 本地 `faster-whisper` 兼容模型目录；运行时不会联网下载模型
 - 至少 1 GB 可用磁盘空间；处理较多历史视频时建议预留更多空间
 
-### 方式一：让 Agent 安装
+### 推荐：让 Agent 完成安装和配置
 
-直接告诉 Agent：
+用户只需要对 Agent 说：
 
 ```text
-帮我克隆并安装 https://github.com/Kuhakucai/douyin-mcp.git 项目
+帮我克隆并安装配置 https://github.com/Kuhakucai/douyin-mcp.git 项目
 ```
 
-Agent 应先阅读本 README，再克隆项目并按系统运行安装脚本：macOS 使用 `bash ./easy-install.sh`，Windows 使用 `easy-install.ps1`。脚本会创建项目专用 `.venv`、安装基础依赖、生成默认 `.env`、初始化数据库并执行环境诊断。
+Agent 必须先阅读本 README，并自行完成以下步骤，而不是要求用户逐条输入命令：
 
-基础安装不会下载大模型，也不会启用视频文案，因此 Agent 无需寻找项目 Release 或编译 FFmpeg。初步使用所需的作品同步、指标查询和 MCP 接入在基础安装完成后即可配置。用户明确要求启用视频文案时，Agent 再检查本机 FFmpeg、安装 `.[asr]` 可选依赖、准备本地模型目录并更新 `.env`；安装系统软件前应先取得用户同意。
+1. 检查 macOS/Windows、Python 3.11+ 和 Google Chrome；缺少系统级前置条件时，说明原因并先征得用户同意再安装。
+2. 克隆仓库后，macOS 运行 `bash ./easy-install.sh`；Windows 运行 `powershell -ExecutionPolicy Bypass -File .\easy-install.ps1`。脚本仅创建项目专用 `.venv`、安装基础依赖、生成 `.env`、初始化数据库和执行诊断，不修改全局 Python 或系统 PATH。
+3. 不假定 `douyin-mcp` 已在全局 PATH：macOS 使用 `./.venv/bin/douyin-mcp`，Windows 使用 `.\.venv\Scripts\douyin-mcp.exe`。运行 `doctor` 并确认 `ready=true`；失败时先诊断和修复。
+4. 运行 `init`，读取输出的 `mcp_config`。展示平台风险并取得用户明确确认后，执行 `acknowledge-platform-risk --yes`；随后将完整的 `mcp_config` 写入用户当前使用的 MCP 客户端，包括 Codex、Claude Code、Wintful、Kiro、Cursor 或其他兼容客户端。Agent 应先识别自身所在客户端和其配置方式；无法识别时，只询问用户正在使用哪个客户端，不要求用户自行寻找配置文件。Agent 无法写入客户端配置时，应给出完整配置和明确的放置位置，不能省略本地路径或猜测配置文件。
+5. 配置完成后运行 `login --timeout 180`，打开项目专用 Chrome 让用户扫码；不得绕过登录或安全验证。登录后验证 MCP 连接，再同步作品列表和最近 20 条作品详情，并汇报安装、登录、同步和数据覆盖情况。
+6. 完成安装后必须向用户交接：说明 MCP 已连接、当前登录与数据同步状态；用简明语言说明可查询作品和指标、比较作品表现、分析内容表现、导出数据等功能；给出 3 个可直接发送给 Agent 的首选示例请求。用户未启用视频文案时，明确说明音轨文案分析暂不可用，并提示用户可在需要时说“启用视频文案”。
+7. 初次安装不启用视频文案，也不安装 FFmpeg、ASR 模型或其他系统软件；仅当用户明确要求“启用视频文案”时，才说明下载量、磁盘占用和系统改动并征得同意。
 
 > [!NOTE]
-> 首次扫码登录、修改 MCP 客户端配置或同步真实数据前，Agent 应先展示平台风险并征得你的明确确认。
+> 首次扫码登录、写入 MCP 客户端配置或同步真实数据前，Agent 必须先展示平台风险并取得你的明确确认。
 
-### 方式二：手动安装
+### 备用：手动安装
 
 <details>
 <summary><strong>展开查看 PowerShell 安装命令</strong></summary>
@@ -116,7 +122,7 @@ bash ./easy-install.sh
 
 </details>
 
-一键脚本只操作仓库内的 `.venv`、`.env` 和 `data`，不会安装系统级软件。若用户需要视频文案，Agent 应按以下顺序处理：
+一键脚本只操作仓库内的 `.venv`、`.env` 和 `data`，不会安装系统级软件。仅当用户明确要求视频文案时，Agent 应按以下顺序处理：
 
 1. 运行 `ffmpeg -version` 和 `ffprobe -version` 检查现有程序；缺失时，经用户同意后使用当前系统可信的软件包管理器安装。
 2. 在项目虚拟环境中执行 `python -m pip install -e ".[asr]"`。
