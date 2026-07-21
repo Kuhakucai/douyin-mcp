@@ -65,22 +65,21 @@
 
 ### 推荐：让 Agent 完成安装和配置
 
-将下面整段话直接发给你的 Agent；不需要自己选择脚本、创建虚拟环境或手动抄写 MCP 配置：
+用户只需要对 Agent 说：
 
 ```text
-请安装并配置这个本地 MCP 服务：https://github.com/Kuhakucai/douyin-mcp.git
-
-请严格按仓库 README 执行，并完成以下工作：
-1. 先检查当前系统、Python 3.11+ 和 Google Chrome；缺少系统级前置条件时，说明原因并先征得我的同意再安装。
-2. 克隆仓库后：macOS 运行 `bash ./easy-install.sh`；Windows 运行 `powershell -ExecutionPolicy Bypass -File .\easy-install.ps1`。不要修改全局 Python，也不要把依赖安装到项目外。
-3. 不要假定 `douyin-mcp` 已在全局 PATH 中。macOS 使用 `./.venv/bin/douyin-mcp doctor`，Windows 使用 `.\.venv\Scripts\douyin-mcp.exe doctor`；确认其返回 `ready=true`。若失败，定位并修复后再继续。
-4. macOS 运行 `./.venv/bin/douyin-mcp init`，Windows 运行 `.\.venv\Scripts\douyin-mcp.exe init`，读取输出中的 `mcp_config`。先向我展示平台自动化访问风险；得到我的明确确认后，用同一路径执行 `acknowledge-platform-risk --yes`，并将 `mcp_config` 写入我当前使用的 MCP 客户端。若你不能修改客户端配置，请输出完整、未省略的配置和应放置的位置，不要猜测或省略路径。
-5. 配置完成后，用同一平台路径运行 `login --timeout 180`，打开项目专用 Chrome 让我扫码；不要尝试绕过登录或安全验证。
-6. 登录成功后验证 MCP 连接，再同步作品列表和最近 20 条作品详情，最后汇报安装、登录、同步和数据覆盖情况。
-7. 初次安装不要启用视频文案提取，也不要安装 FFmpeg、ASR 模型或任何系统软件；仅当我明确要求“启用视频文案”时，再说明所需下载、磁盘占用和系统改动，并征得我的同意。
+帮我克隆并安装配置 https://github.com/Kuhakucai/douyin-mcp.git 项目
 ```
 
-安装脚本会创建项目专用 `.venv`、安装基础依赖、生成默认 `.env`、初始化数据库并执行环境诊断。它不修改全局 Python、不改系统 PATH，也不下载大模型；作品同步、指标查询和基础 MCP 工具在此步骤后即可使用。
+Agent 必须先阅读本 README，并自行完成以下步骤，而不是要求用户逐条输入命令：
+
+1. 检查 macOS/Windows、Python 3.11+ 和 Google Chrome；缺少系统级前置条件时，说明原因并先征得用户同意再安装。
+2. 克隆仓库后，macOS 运行 `bash ./easy-install.sh`；Windows 运行 `powershell -ExecutionPolicy Bypass -File .\easy-install.ps1`。脚本仅创建项目专用 `.venv`、安装基础依赖、生成 `.env`、初始化数据库和执行诊断，不修改全局 Python 或系统 PATH。
+3. 不假定 `douyin-mcp` 已在全局 PATH：macOS 使用 `./.venv/bin/douyin-mcp`，Windows 使用 `.\.venv\Scripts\douyin-mcp.exe`。运行 `doctor` 并确认 `ready=true`；失败时先诊断和修复。
+4. 运行 `init`，读取输出的 `mcp_config`。展示平台风险并取得用户明确确认后，执行 `acknowledge-platform-risk --yes`；随后将完整的 `mcp_config` 写入用户当前使用的 MCP 客户端，包括 Codex、Claude Code、Wintful、Kiro、Cursor 或其他兼容客户端。Agent 应先识别自身所在客户端和其配置方式；无法识别时，只询问用户正在使用哪个客户端，不要求用户自行寻找配置文件。Agent 无法写入客户端配置时，应给出完整配置和明确的放置位置，不能省略本地路径或猜测配置文件。
+5. 配置完成后运行 `login --timeout 180`，打开项目专用 Chrome 让用户扫码；不得绕过登录或安全验证。登录后验证 MCP 连接，再同步作品列表和最近 20 条作品详情，并汇报安装、登录、同步和数据覆盖情况。
+6. 完成安装后必须向用户交接：说明 MCP 已连接、当前登录与数据同步状态；用简明语言说明可查询作品和指标、比较作品表现、分析内容表现、导出数据等功能；给出 3 个可直接发送给 Agent 的首选示例请求。用户未启用视频文案时，明确说明音轨文案分析暂不可用，并提示用户可在需要时说“启用视频文案”。
+7. 初次安装不启用视频文案，也不安装 FFmpeg、ASR 模型或其他系统软件；仅当用户明确要求“启用视频文案”时，才说明下载量、磁盘占用和系统改动并征得同意。
 
 > [!NOTE]
 > 首次扫码登录、写入 MCP 客户端配置或同步真实数据前，Agent 必须先展示平台风险并取得你的明确确认。
