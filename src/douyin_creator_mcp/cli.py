@@ -20,7 +20,7 @@ from .compliance import (
     record_platform_risk_acknowledgement,
 )
 from .config import ensure_runtime_dirs, load_settings
-from .responses import error_response, response_from_exception, sanitize_payload, success_response
+from .responses import error_response, response_from_exception, success_response
 from .services.browser_service import BrowserService
 from .storage.db import Database
 
@@ -89,6 +89,10 @@ def build_service() -> BrowserService:
 
 
 def _mcp_config(service: BrowserService) -> dict[str, Any]:
+    # Keep the virtual-environment entry point itself. On macOS it is commonly
+    # a symlink; resolving it would incorrectly point MCP clients at the system
+    # Python without this project's installed dependencies.
+    python_executable = str(Path(sys.executable).absolute())
     environment = {
         "MCP_TRANSPORT": "stdio",
         "DATA_DIR": str(service.settings.data_dir.resolve()),
@@ -121,7 +125,7 @@ def _mcp_config(service: BrowserService) -> dict[str, Any]:
     return {
         "mcpServers": {
             "douyin-creator": {
-                "command": str(Path(sys.executable).resolve()),
+                "command": python_executable,
                 "args": ["-m", "douyin_creator_mcp.server"],
                 "env": environment,
             }
@@ -129,7 +133,7 @@ def _mcp_config(service: BrowserService) -> dict[str, Any]:
         "client_toml": "\n".join(
             [
                 "[mcp_servers.douyin_creator]",
-                f'command = {json.dumps(str(Path(sys.executable).resolve()))}',
+                f"command = {json.dumps(python_executable)}",
                 'args = ["-m", "douyin_creator_mcp.server"]',
                 "",
                 "[mcp_servers.douyin_creator.env]",
@@ -176,6 +180,7 @@ def run_command(
 ) -> dict[str, Any]:
     if args.command == "init":
         return success_response(
+            preserve_trusted_local_paths=True,
             schema_version=service.db.schema_version(),
             data_dir=str(service.settings.data_dir.resolve()),
             profile_dir=str(service.settings.douyin_browser_profile_dir.resolve()),
@@ -271,9 +276,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         payload = run_command(args, build_service())
     except Exception as exc:
         payload = response_from_exception(exc)
-    sanitized = sanitize_payload(payload)
-    print(json.dumps(sanitized, ensure_ascii=False, indent=2))
-    return 0 if sanitized.get("ok") else 1
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    return 0 if payload.get("ok") else 1
 
 
 def _configure_utf8_console() -> None:

@@ -5,7 +5,7 @@
 
   <p>
     <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&amp;logoColor=white" alt="Python 3.11+"></a>
-    <img src="https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows11&amp;logoColor=white" alt="Windows">
+    <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows-333333?logo=apple&amp;logoColor=white" alt="macOS and Windows">
     <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-Compatible-22C55E" alt="MCP Compatible"></a>
     <a href="https://github.com/jlowin/fastmcp"><img src="https://img.shields.io/badge/FastMCP-Powered-FF6B35" alt="FastMCP Powered"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-8B5CF6" alt="AGPL-3.0"></a>
@@ -46,13 +46,13 @@
 
 视频文案采用**按需加载**，而不是首次启动就批量处理全部历史视频。这样能更快完成首次同步，减少不必要的媒体下载、CPU 占用和本地存储；当用户真正分析某条视频时，缺失文案会自动进入后台提取队列。
 
-当前范围为 **Windows、本机运行、单用户、单抖音账号**。本项目不提供多账号托管、云端采集、数据转售、未公开接口抓取，或绕过登录、安全验证、权限及风控的能力。
+当前范围为 **macOS 或 Windows、本机运行、单用户、单抖音账号**。本项目不提供多账号托管、云端采集、数据转售、未公开接口抓取，或绕过登录、安全验证、权限及风控的能力。
 
 ## 快速开始
 
 ### 环境要求
 
-- Windows 10/11
+- macOS 或 Windows 10/11
 - Python 3.11 或更高版本
 - Google Chrome
 - 一个支持 MCP 和终端操作的 Agent
@@ -71,9 +71,9 @@
 帮我克隆并安装 https://github.com/Kuhakucai/douyin-mcp.git 项目
 ```
 
-Agent 应先阅读本 README，再克隆项目并运行 `easy-install.ps1`。脚本会创建项目专用 `.venv`、安装基础依赖、生成默认 `.env`、初始化数据库并执行环境诊断。
+Agent 应先阅读本 README，再克隆项目并按系统运行安装脚本：macOS 使用 `bash ./easy-install.sh`，Windows 使用 `easy-install.ps1`。脚本会创建项目专用 `.venv`、安装基础依赖、生成默认 `.env`、初始化数据库并执行环境诊断。
 
-基础安装完成后，Agent 应主动说明视频文案功能还需要本地 FFmpeg、ASR 可选依赖和模型目录，并询问用户是否启用。用户确认后，由 Agent 检查或安装依赖、引导用户选择本地模型目录、更新配置并重新执行环境诊断；用户不需要在首次安装指令中了解这些内部参数。
+基础安装不会下载大模型，也不会启用视频文案，因此 Agent 无需寻找项目 Release 或编译 FFmpeg。初步使用所需的作品同步、指标查询和 MCP 接入在基础安装完成后即可配置。用户明确要求启用视频文案时，Agent 再检查本机 FFmpeg、安装 `.[asr]` 可选依赖、准备本地模型目录并更新 `.env`；安装系统软件前应先取得用户同意。
 
 > [!NOTE]
 > 首次扫码登录、修改 MCP 客户端配置或同步真实数据前，Agent 应先展示平台风险并征得你的明确确认。
@@ -105,6 +105,26 @@ powershell -ExecutionPolicy Bypass -File .\easy-install.ps1
 
 </details>
 
+<details>
+<summary><strong>展开查看 macOS 安装命令</strong></summary>
+
+```bash
+git clone https://github.com/Kuhakucai/douyin-mcp.git
+cd douyin-mcp
+bash ./easy-install.sh
+```
+
+</details>
+
+一键脚本只操作仓库内的 `.venv`、`.env` 和 `data`，不会安装系统级软件。若用户需要视频文案，Agent 应按以下顺序处理：
+
+1. 运行 `ffmpeg -version` 和 `ffprobe -version` 检查现有程序；缺失时，经用户同意后使用当前系统可信的软件包管理器安装。
+2. 在项目虚拟环境中执行 `python -m pip install -e ".[asr]"`。
+3. 将兼容的 faster-whisper/CTranslate2 模型下载到本地目录，并在 `.env` 中设置其绝对路径。
+4. 启用文案开关，重新运行 `douyin-mcp init`，再调用 `douyin_browser_get_transcript_capabilities` 验证能力。
+
+这种方式由用户的 Agent 根据实际操作系统完成依赖安装，不要求项目维护 GitHub Release，也不要求用户编译本项目源码。
+
 需要视频文案时，请在执行 `douyin-mcp init` 前编辑 `.env`：
 
 ```dotenv
@@ -115,7 +135,7 @@ TRANSCRIPT_ASR_DEVICE=cpu
 TRANSCRIPT_ASR_COMPUTE_TYPE=int8
 ```
 
-`TRANSCRIPT_ASR_MODEL_DIR` 必须指向已经存在的本地模型目录。建议随后让 Agent 调用 `douyin_browser_get_transcript_capabilities`，确认 FFmpeg、FFprobe、模型和功能开关都已就绪。
+`TRANSCRIPT_ASR_MODEL_DIR` 必须指向有效的本地 faster-whisper/CTranslate2 模型目录。外部目录至少需要可解析且非空的 `config.json`、非空 `model.bin`，以及 `tokenizer.json`、`vocabulary.txt`、`vocabulary.json` 之一；仅有 README 或任意临时文件不会被 `doctor` 判为 ready。建议随后让 Agent 调用 `douyin_browser_get_transcript_capabilities`，确认 FFmpeg、FFprobe、模型和功能开关都已就绪。
 
 ### 确认平台风险
 
@@ -592,6 +612,7 @@ src/douyin_creator_mcp/
     └── transcript_tools.py   # 9 个文案 MCP 工具契约
 
 easy-install.ps1              # Windows 一键安装
+easy-install.sh               # macOS/Linux 一键安装
 ```
 
 ### 扩展原则

@@ -62,22 +62,33 @@ def _sanitize_url(match: re.Match[str]) -> str:
     return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", "")) + suffix
 
 
-def sanitize_text(value: str, *, data_dir: Path | str | None = None) -> str:
+def sanitize_text(
+    value: str,
+    *,
+    data_dir: Path | str | None = None,
+    preserve_trusted_local_paths: bool = False,
+) -> str:
     text = HEADER_RE.sub(lambda _: f"authorization: {REDACTED}", str(value))
     text = BEARER_RE.sub(f"Bearer {REDACTED}", text)
     text = URL_RE.sub(_sanitize_url, text)
     if data_dir is not None:
         raw = str(Path(data_dir).resolve())
         text = re.sub(re.escape(raw), "<data-dir>", text, flags=re.IGNORECASE)
-    text = WINDOWS_PATH_RE.sub("<local-path>", text)
-    text = POSIX_PATH_RE.sub("<local-path>", text)
+    if not preserve_trusted_local_paths:
+        text = WINDOWS_PATH_RE.sub("<local-path>", text)
+        text = POSIX_PATH_RE.sub("<local-path>", text)
     if len(text) > MAX_STRING_LENGTH:
         correlation_id = uuid.uuid4().hex
         text = f"{text[:MAX_STRING_LENGTH]}… [truncated correlation_id={correlation_id}]"
     return text
 
 
-def sanitize_payload(value: Any, *, data_dir: Path | str | None = None) -> Any:
+def sanitize_payload(
+    value: Any,
+    *,
+    data_dir: Path | str | None = None,
+    preserve_trusted_local_paths: bool = False,
+) -> Any:
     if isinstance(value, Mapping):
         sanitized: dict[str, Any] = {}
         for key, item in value.items():
@@ -85,30 +96,64 @@ def sanitize_payload(value: Any, *, data_dir: Path | str | None = None) -> Any:
             sanitized[text_key] = (
                 REDACTED
                 if is_sensitive_key(text_key)
-                else sanitize_payload(item, data_dir=data_dir)
+                else sanitize_payload(
+                    item,
+                    data_dir=data_dir,
+                    preserve_trusted_local_paths=preserve_trusted_local_paths,
+                )
             )
         return sanitized
     if isinstance(value, tuple):
-        return tuple(sanitize_payload(item, data_dir=data_dir) for item in value)
+        return tuple(
+            sanitize_payload(
+                item,
+                data_dir=data_dir,
+                preserve_trusted_local_paths=preserve_trusted_local_paths,
+            )
+            for item in value
+        )
     if isinstance(value, list):
-        return [sanitize_payload(item, data_dir=data_dir) for item in value]
+        return [
+            sanitize_payload(
+                item,
+                data_dir=data_dir,
+                preserve_trusted_local_paths=preserve_trusted_local_paths,
+            )
+            for item in value
+        ]
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        return [sanitize_payload(item, data_dir=data_dir) for item in value]
+        return [
+            sanitize_payload(
+                item,
+                data_dir=data_dir,
+                preserve_trusted_local_paths=preserve_trusted_local_paths,
+            )
+            for item in value
+        ]
     if isinstance(value, str):
-        return sanitize_text(value, data_dir=data_dir)
+        return sanitize_text(
+            value,
+            data_dir=data_dir,
+            preserve_trusted_local_paths=preserve_trusted_local_paths,
+        )
     return value
 
 
-def success_response(**payload: Any) -> dict[str, Any]:
+def success_response(
+    *, preserve_trusted_local_paths: bool = False, **payload: Any
+) -> dict[str, Any]:
     result = {"status": "success", "ok": True}
     result.update(payload)
-    return sanitize_payload(result)
+    return sanitize_payload(
+        result, preserve_trusted_local_paths=preserve_trusted_local_paths
+    )
 
 
 def error_response(
     error_type: str,
     message: str,
     retryable: bool = False,
+    preserve_trusted_local_paths: bool = False,
     **extra: Any,
 ) -> dict[str, Any]:
     payload = {
@@ -119,10 +164,22 @@ def error_response(
         "retryable": retryable,
     }
     payload.update(extra)
-    return sanitize_payload(payload)
+    return sanitize_payload(
+        payload, preserve_trusted_local_paths=preserve_trusted_local_paths
+    )
 
 
-def response_from_exception(exc: Exception) -> dict[str, Any]:
+def response_from_exception(
+    exc: Exception, *, preserve_trusted_local_paths: bool = False
+) -> dict[str, Any]:
     if isinstance(exc, AppError):
-        return sanitize_payload(exc.to_response())
-    return error_response("api_error", str(exc), retryable=False)
+        return sanitize_payload(
+            exc.to_response(),
+            preserve_trusted_local_paths=preserve_trusted_local_paths,
+        )
+    return error_response(
+        "api_error",
+        str(exc),
+        retryable=False,
+        preserve_trusted_local_paths=preserve_trusted_local_paths,
+    )

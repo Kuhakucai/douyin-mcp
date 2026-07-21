@@ -48,6 +48,15 @@ class BrowserBackend(Protocol):
     def close(self) -> None: ...
 
 
+def _format_creator_publish_time(timestamp: int) -> str:
+    """Format creator-card time without relying on the process C locale."""
+    published = datetime.fromtimestamp(timestamp, ZoneInfo("Asia/Shanghai"))
+    return (
+        f"{published.year:04d}年{published.month:02d}月{published.day:02d}日 "
+        f"{published.hour:02d}:{published.minute:02d}"
+    )
+
+
 class DefaultBrowserBackend:
     """Default handler; constructed and used only inside the executor thread."""
 
@@ -282,9 +291,7 @@ class DefaultBrowserBackend:
         page = session.open_creator_video_page()
         collect_all_video_cards(page)
         title = str(target.get("title") or "")
-        publish_time = datetime.fromtimestamp(
-            int(target["publish_time"]), ZoneInfo("Asia/Shanghai")
-        ).strftime("%Y年%m月%d日 %H:%M")
+        publish_time = _format_creator_publish_time(int(target["publish_time"]))
         index = page.evaluate(
             """
             expected => [...document.querySelectorAll('[class*="video-card-content-"]')]
