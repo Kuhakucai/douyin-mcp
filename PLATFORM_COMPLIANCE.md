@@ -38,7 +38,7 @@
 
 ## 项目边界
 
-项目只面向 Windows、本机运行、单用户、单账号和用户本人可见的数据，不提供或支持：
+项目只面向 macOS 或 Windows、本机运行、单用户、单账号和用户本人可见的数据，不提供或支持：
 
 - 绕过登录、扫码、安全验证、验证码、权限或平台风控；
 - 未经授权访问他人账号或处理他人数据；
@@ -53,8 +53,12 @@
 
 安装和本地只读查询不需要启动浏览器自动化。首次登录或同步前，用户必须主动运行：
 
-```powershell
-douyin-mcp acknowledge-platform-risk --yes
+```text
+# macOS
+./.venv/bin/douyin-mcp acknowledge-platform-risk --yes
+
+# Windows
+.\.venv\Scripts\douyin-mcp.exe acknowledge-platform-risk --yes
 ```
 
 该命令只记录用户已经看到并理解风险，不代表项目方、平台或任何第三方确认该使用方式合法合规。确认记录保存在本机数据目录，不会提交到仓库。

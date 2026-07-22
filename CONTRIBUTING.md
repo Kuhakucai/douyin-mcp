@@ -35,7 +35,9 @@
 
 ## 提交前检查
 
-```powershell
+以下命令可在 macOS 或 Windows 的已激活项目虚拟环境中运行：
+
+```text
 python -m compileall -q src
 python -m pytest -q
 ```
