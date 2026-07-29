@@ -25,7 +25,8 @@ build/
 
 # Local browser authentication, diagnostics, and real-account acceptance data
 .auto-flow/
-docs/
+docs/*
+!docs/BEGINNER_AGENT_GUIDE.md
 AGENT_HANDOFF.md
 douyin-creator-mcp-PRD.md
 douyin-creator-mcp.md

@@ -14,6 +14,7 @@
 
   <p>
     <a href="#快速开始">快速开始</a> ·
+    <a href="docs/BEGINNER_AGENT_GUIDE.md">新手教程</a> ·
     <a href="#核心能力">核心能力</a> ·
     <a href="#视频文案提取用到时再加载">视频文案</a> ·
     <a href="#推荐用法">推荐用法</a> ·
@@ -23,6 +24,8 @@
 </div>
 
 ![douyin-mcp：从创作者数据到 AI 分析](assets/douyin-mcp-hero.svg)
+
+> 第一次接触开源、编程或 MCP？可以先看[新手教程：只要会给 Agent 下指令](docs/BEGINNER_AGENT_GUIDE.md)，直接把一句话发给 Agent，让它完成安装和配置。
 
 > [!IMPORTANT]
 > **这是非官方社区工具。** 本项目未获抖音或其关联公司授权、认可或背书。项目使用 Playwright 操作浏览器；即使只读取本人账号中真实可见的数据，也可能违反平台条款或触发账号风控。使用前请阅读[平台合规与非官方声明](PLATFORM_COMPLIANCE.md)，确认已取得所需授权，并先执行风险确认。AGPL 只许可项目代码，不授予任何平台访问权、数据权或商标权。
